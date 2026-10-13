@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- interface를 연결 -->	
+<mapper namespace="com.classbridge.user.UserMapper">
+	
+	<!--
+		<select> : (MyBatis) DB에서 데이터를 읽어오는 SQL을 적음을 명기
+		id="findUserById" : <select>를 findUserById 메소드와 연결
+		resultType : 반환 타입 (조회한 행의 값을 User 클래스로 만든 객체로 반환)
+	-->
+	<select id="findUserById"
+			resultType="com.classbridge.user.User">
+
+		SELECT ID,
+			EMAIL,
+			PASSWORD,
+			ROLE,
+			CREATED_AT AS "createdAt"
+		FROM APP_USERS
+		WHERE ID = #{id}
+
+	</select>
+	
+	<!--
+		MyBatis는 <insert>를 실행 할 때 처리한 행 수를 반환하므로 int를 메소드의 타입으로 지정
+	-->
+	<insert id="insertUser"
+			parameterType="com.classbridge.user.User">
+	
+		<!-- 
+			key값을 조회해서 전달받은 객체의 필드에 넣음 
+			keyProperty : 조회한 번호를 전달받은 User 객체의 id 필드에 넣음
+			resultType : 조회한 번호를 java의 Long 타입으로 받음
+			order="BEFORE" : <insert> SQL을 실행하기 전에 작업을 실행
+		-->
+		<selectKey keyProperty="id"
+				resultType="java.lang.Long"
+				order="BEFORE">
+				
+			<!--
+				APP_USERS_SEQ : Oracle에서 만들어둔 시퀀스 이름
+				NEXTVAL : 시퀀스에서 다음 번호를 발급받음 (실제로 만들어 둔 다음 번호 발급 규칙 sequance를 사용)
+				DUAL : Oracle에서 값이나 계산 결과를 조회할 때 사용하는 기본 제공 테이블
+			-->
+			SELECT APP_USERS_SEQ.NEXTVAL
+			FROM DUAL
+		
+		</selectKey>
+	
+		INSERT INTO APP_USERS (
+			ID,
+			EMAIL,
+			PASSWORD,
+			ROLE
+		)
+		VALUES (
+			#{id},
+			#{email},
+			#{password},
+			#{role}
+		)
+	
+	</insert>
+
+</mapper>

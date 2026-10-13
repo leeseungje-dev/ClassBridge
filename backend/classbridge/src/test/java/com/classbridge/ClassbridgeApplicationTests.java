@@ -1,9 +1,7 @@
 package com.classbridge;
 
-/*
-Writer : LEE SEUNGJE
-Date : 2026.10.10 ~ 
- */
+// MyBatis
+import com.classbridge.user.UserMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -18,24 +16,23 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.classbridge.user.User;
-import com.classbridge.user.UserRepository;
 
-import jakarta.persistence.EntityManager;
+/*
+ * author : LEE SEUNGJE
+ * date : 2026.10.10 ~ 2026.10.12
+ */
 
-// 원래 있던 양식
+// Test에 필요한 Spring 환경(DB 연결, Repository 등)을 준비하라는 표시
 @SpringBootTest
 class ClassbridgeApplicationTests {
 
 	// field
-	// Spring이 준비한 객체를 필드에 넣음
+	// proxy : 추상 인터페이스지만 MyBatis가 이 인터페이스를 구현하는 객체를 자동으로 만들어줌
 	@Autowired
-	private UserRepository userRepository;
-	
-	@Autowired
-	private EntityManager entityManager;
+	private UserMapper userMapper;
 	
 	// method
-	// (원래 있던 양식) Test로 실행할 메소드
+	// Test로 실행할 메소드
 	@Test
 	void contextLoads() {
 	}
@@ -52,26 +49,24 @@ class ClassbridgeApplicationTests {
 		
 		User user = new User(email, passwordValue);
 		
-		// 저장 요청 후 실제 INSERT 실행 (저장을 요청하고 대기중인 SQL을 DB에 실행)
-		userRepository.saveAndFlush(user);
+		// MyBatis로 저장하고, 추가된 행 수 확인
+		int insertedRows = userMapper.insertUser(user);
+		assertEquals(1, insertedRows);
 		
+		// selectkey가 User 객체에 넣은 ID 확인
 		Long savedId = user.getId();
 		assertNotNull(savedId);
 		
-		// 메모리의 객체를 그대로 반환하지 않도록 JPA 관리 상태 비우기 (JPA가 관리하던 객체를 분리, DB 데이터를 삭제하는 것은 아님)
-		entityManager.clear();
-		
-		// DB에서 다시 조회
-		// findById() : ID로 조회
-		// orElseThrow() : 조회 결과가 없으면 예외를 Throw해 테스트 실패
-		User foundUser = userRepository.findById(savedId).orElseThrow();
+		// MyBatis로 DB에서 다시 조회
+		User foundUser = userMapper.findUserById(savedId);
+		// JUnit(테스트 도구)의 기능 : null인지 검사 / null이면 테스트 실패
+		assertNotNull(foundUser);
 
-		// assertEquals : 기대값과 실제값이 같은지 검사
+		// assertEquals : 저장값이 조회값과 같은지 검사
         assertEquals(savedId, foundUser.getId());
         assertEquals(email, foundUser.getEmail());
         assertEquals(passwordValue, foundUser.getPassword());
         assertEquals("INSTRUCTOR", foundUser.getRole());
-        // assertNotNull() : 값이 NULL이 아닌지 검사
         assertNotNull(foundUser.getCreatedAt());
 	}
 }
