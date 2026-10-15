@@ -9,7 +9,7 @@
 	<!--
 		<select> : (MyBatis) DB에서 데이터를 읽어오는 SQL을 적음을 명기
 		id="findUserById" : <select>를 findUserById 메소드와 연결
-		resultType : 반환 타입 (조회한 행의 값을 User 클래스로 만든 객체로 반환)
+		resultType : 반환 타입 (조회한 행의 값을 User 클래스로 만든 객체 반환 / 없으면 null 반환)
 	-->
 	<select id="findUserById"
 			resultType="com.classbridge.user.User">
@@ -22,6 +22,19 @@
 		FROM APP_USERS
 		WHERE ID = #{id}
 
+	</select>
+	
+	<select id="findUserByEmail"
+			resultType="com.classbridge.user.User">
+		
+		SELECT ID,
+			EMAIL,
+			PASSWORD,
+			ROLE,
+			CREATED_AT AS "createdAt"
+		FROM APP_USERS
+		WHERE EMAIL = #{email}
+		
 	</select>
 	
 	<!--
