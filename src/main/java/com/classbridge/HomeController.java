@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 /*
  * author : LEE SEUNGJE
- * date : 2026.10.13 ~
+ * date : 2026.10.13 ~ 2026.10.13
  */
 
 // web 요청을 처리하고 화면을 연결하는 클래스로 등록
