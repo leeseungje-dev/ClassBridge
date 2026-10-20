@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<!-- interface를 연결 -->
+<mapper namespace="com.classbridge.student.StudentMapper">
+	
+	<!--
+		<select> : (MyBatis) DB에서 데이터를 읽어오는 SQL을 적음을 명기
+	-->
+	<select id="findStudentById"
+			resultType="com.classbridge.student.Student">
+	
+		SELECT ID,
+			INSTRUCTOR_ID AS "instructorId",
+			NAME,
+			LEARNING_START_DATE AS "learningStartDate",
+			CURRENT_LEVEL AS "currentLevel",
+			INSTRUCTOR_MEMO AS "instructorMemo",
+			CREATED_AT AS "createdAt"
+		FROM STUDENTS
+		WHERE ID = #{id}
+			AND INSTRUCTOR_ID = #{instructorId}
+	
+	</select>
+	
+	<!--
+		MyBatis는 <insert>를 실행 할 때 처리한 행 수를 반환하므로 int를 메소드의 타입으로 지정
+	-->
+	<insert id="insertStudent"
+			parameterType="com.classbridge.student.Student">
+		
+		<!-- 
+			key값을 조회해서 전달받은 객체의 필드에 넣음 
+			keyProperty : 조회한 번호를 전달받은 User 객체의 id 필드에 넣음
+			resultType : 조회한 번호를 java의 Long 타입으로 받음
+			order="BEFORE" : <insert> SQL을 실행하기 전에 작업을 실행
+		-->
+		<selectKey keyProperty="id"
+				resultType="java.lang.Long"
+				order="BEFORE">
+			SELECT STUDENTS_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+		
+		INSERT INTO STUDENTS (
+			ID,
+			INSTRUCTOR_ID,
+			NAME,
+			LEARNING_START_DATE,
+			CURRENT_LEVEL,
+			INSTRUCTOR_MEMO
+		)
+		VALUES (
+			#{id},
+			#{instructorId},
+			#{name},
+			<!--
+				jdbc : Java DB Connectivity
+				jdbcType : DB에 전달할 값의 자료형을 알려 주는 설정
+					ㄴ> 선택입력 필드는 null일 수도 있으니까, 빈 값도 type을 지정
+			-->
+			#{learningStartDate, jdbcType=DATE},
+			#{currentLevel, jdbcType=VARCHAR},
+			#{instructorMemo, jdbcType=VARCHAR}
+		)
+		
+	</insert>
+	
+	<!--
+		<update> : (MyBatis) 수정 작업 (값이 없을 시 null을 넣음 -> 이후 화면에서 기존값이 들어있게 설정할 예정)
+		작업한 row 수(int)를 반환
+	-->
+	<update id="updateStudent">
+		
+		UPDATE STUDENTS
+		SET NAME = #{student.name},
+			LEARNING_START_DATE = #{student.learningStartDate, jdbcType=DATE},
+			CURRENT_LEVEL = #{student.currentLevel, jdbcType=VARCHAR},
+			INSTRUCTOR_MEMO = #{student.instructorMemo, jdbcType=VARCHAR}
+		WHERE ID = #{student.id}
+			AND INSTRUCTOR_ID = #{instructorId}
+		
+	</update>
+	
+	<!--
+		<delete> : (MyBatis) 삭제 작업 (학생 id와 소유 강사 id 로만 삭제 가능 / 다른 강사 삭제 불가능)
+		작업한 row 수(int)를 반환
+	-->
+	<delete id="deleteStudent">
+		
+		DELETE FROM STUDENTS
+		WHERE ID = #{id}
+			AND INSTRUCTOR_ID = #{instructorId}
+		
+	</delete>
+	
+	<!--
+		<select> : (MyBatis) DB에서 데이터를 읽어오는 SQL
+		해당 강사 id 의 모든 학생을 descend 로 정렬해서 조회
+		반환값은 List<Student> 지만, XML에는 Student 로 지정
+	-->
+	<select id="findStudentsByInstructorId"
+			resultType="com.classbridge.student.Student">
+		
+		SELECT ID,
+			INSTRUCTOR_ID AS "instructorId",
+			NAME,
+			LEARNING_START_DATE AS "learningStartDate",
+			CURRENT_LEVEL AS "currentLevel",
+			INSTRUCTOR_MEMO AS "instructorMemo",
+			CREATED_AT AS "createdAt"
+		FROM STUDENTS
+		WHERE INSTRUCTOR_ID = #{instructorId}
+		ORDER BY ID DESC
+		
+	</select>
+	
+</mapper>

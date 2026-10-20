@@ -10,6 +10,9 @@
 		
 		<a th:if="${loginEmail == null}"
 			th:href="@{/login}">ログイン</a>
+			
+		<a th:if="${loginEmail == null}"
+			th:href="@{/signup}">新規登録</a>
 		
 		<p th:if="${loginEmail != null}"
 			th:text="|ログイン中：${loginEmail}|"></p>

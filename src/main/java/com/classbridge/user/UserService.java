@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
  * date : 2026.10.13 ~ 2026.10.14
  */
 
-// @Service : 업무 처리(중복 확인, 가입처리)를 담당하는 클래스의 객체를 Spring 이 만들어서 등록 (생성시 매개변수를 스스로 찾고, Controller가 필요로하면 연결)
+// @Service : 업무 처리(중복 확인, 가입처리)를 담당하는 클래스의 객체를 Spring 이 만들어서 등록 (생성시 매개변수를 스스로 찾고, Controller 가 필요로하면 연결)
 @Service
 public class UserService {
 	

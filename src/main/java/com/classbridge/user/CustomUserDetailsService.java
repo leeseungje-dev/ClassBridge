@@ -40,7 +40,11 @@ public class CustomUserDetailsService implements UserDetailsService {
 		// .withUsername(user.getEmail()) : 로그인 식별자로 사용할 email 지정
 		// .password(user.getPassword()) : DB에서 조회한 비밀번호 해시를 지정
 		// .build() : 위 정보를 담은 객체 완성 (UserDetails타입의 User 객체를 반환)
-		return org.springframework.security.core.userdetails.User.withUsername(user.getEmail()).password(user.getPassword()).roles(user.getRole()).build();
+		return org.springframework.security.core.userdetails
+				.User.withUsername(user.getEmail())
+				.password(user.getPassword())
+				.roles(user.getRole())
+				.build();
 	}
 	
 }

@@ -1,6 +1,7 @@
 package com.classbridge.user;
 
 import lombok.Getter;
+
 import java.time.LocalDateTime;	// CREATED_AT field 지정 시 field type (= Java 객체 안에 날짜와 시간을 담기)
 
 /*
