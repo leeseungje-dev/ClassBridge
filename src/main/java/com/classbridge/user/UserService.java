@@ -69,4 +69,17 @@ public class UserService {
 		return user.getId();
 	}
 	
+	// email 로 강사 정보 조회
+	// 로그인한 강사 email -> 강사 id 조회 -> id 로 학생 목록 조회 -> 학생 목록 화면 표시
+	public User findUserByEmail(String email) {
+		
+		User user = userMapper.findUserByEmail(email);
+		
+		if (user == null) {
+			throw new IllegalArgumentException("ユーザーが見つかりません。");
+		}
+		
+		return user;
+	}
+	
 }

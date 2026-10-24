@@ -7,8 +7,9 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /*
+ * Student CRUD 기능 구현
  * author : LEE SEUNGJE
- * date : 2026.10.18 ~ 2026.10.20
+ * date : 2026.10.18 ~ 2026.10.21
  */
 
 @Mapper

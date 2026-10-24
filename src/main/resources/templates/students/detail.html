@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>学生詳細 | ClassBridge</title>
+    </head>
+    <body>
+        <h1>学生詳細</h1>
+
+        <div>
+            <h2>学生名</h2>
+            <p th:text="${student.name}"></p>
+        </div>
+
+        <div>
+            <h2>学習開始日</h2>
+            <p th:text="${student.learningStartDate}"></p>
+        </div>
+
+        <div>
+            <h2>学習レベル</h2>
+            <p th:text="${student.currentLevel}"></p>
+        </div>
+
+        <div>
+            <h2>講師メモ</h2>
+            <!-- 메모 입력시 넣은 줄바꿈과 공백을 화면에서 유지해줌 -->
+            <p th:text="${student.instructorMemo}"
+                style="white-space: pre-wrap;"></p>
+        </div>
+
+        <p>
+            <a th:href="@{/students/{id}/edit(id=${student.id})}">
+                学生情報を編集する
+            </a>
+        </p>
+
+        <form
+            th:action="@{/students/{id}/delete(id=${student.id})}"
+            method="post"
+            onsubmit="return confirm('この学生を削除しますか？');">
+            <button type="submit">学生を削除する</button>
+        </form>
+
+        <a th:href="@{/students}">学生一覧へ戻る</a>
+    </body>
+</html>

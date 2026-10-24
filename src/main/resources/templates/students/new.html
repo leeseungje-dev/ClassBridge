@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>学生登録 | ClassBridge</title>
+    </head>
+    <body>
+        <h1>学生登録</h1>
+
+        <p th:if="${errorMessage != null}"
+            th:text="${errorMessage}"></p>
+        
+        <form th:action="@{/students}" method="post">
+            <div>
+                <label for="name">学生名（必須）:&nbsp;</label>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    th:value="${name}"
+                    placeholder="例）山田太郎"
+                    required>
+            </div>
+
+            <div>
+                <label for="learningStartDate">学習開始日 :&nbsp;</label>
+                <input
+                    type="date"
+                    id="learningStartDate"
+                    name="learningStartDate"
+                    th:value="${learningStartDate}">
+            </div>
+
+            <div>
+                <label for="currentLevel">学習レベル :&nbsp;</label>
+                <select id="currentLevel" name="currentLevel">
+                    <option value="">選択してください</option>
+                    <option value="入門" th:selected="${currentLevel == '入門'}">
+                        入門
+                    </option>
+                    <option value="初級" th:selected="${currentLevel == '初級'}">
+                        初級
+                    </option>
+                    <option value="中級" th:selected="${currentLevel == '中級'}">
+                        中級
+                    </option>
+                    <option value="上級" th:selected="${currentLevel == '上級'}">
+                        上級
+                    </option>
+                </select>
+            </div>
+
+            <div>
+                <label for="instructorMemo">講師メモ :&nbsp;</label>
+                <textarea
+                    id="instructorMemo"
+                    name="instructorMemo"
+                    rows="5"
+                    th:text="${instructorMemo}">
+                </textarea>
+            </div>
+
+            <button type="submit">登録する</button>
+        </form>
+
+        <a th:href="@{/students}">学生一覧へ戻る</a>
+    </body>
+</html>

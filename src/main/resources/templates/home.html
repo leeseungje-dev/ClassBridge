@@ -6,17 +6,31 @@
     </head>
     <body>
         <h1>ClassBridge</h1>
-        <p th:text="${message}">기본 안내 문구</p>
+        <p th:text="${message}">
+			기본 안내 문구
+		</p>
 		
 		<a th:if="${loginEmail == null}"
-			th:href="@{/login}">ログイン</a>
+			th:href="@{/login}">ログイン
+		</a>
 			
 		<a th:if="${loginEmail == null}"
-			th:href="@{/signup}">新規登録</a>
+			th:href="@{/signup}">新規登録
+		</a>
 		
 		<p th:if="${loginEmail != null}"
-			th:text="|ログイン中：${loginEmail}|"></p>
+			th:text="|ログイン中：${loginEmail}|">
+		</p>
 		
+		<p th:if="${loginEmail !=null}">
+			<a th:href="@{/students}">学生一覧へ</a>
+		</p>
+
+		<a th:if="${loginEmail != null}" 
+			th:href="@{/students/new}">
+			学生を登録する
+		</a>
+
 		<form th:if="${loginEmail != null}"
 			th:action="@{/logout}"
 			method="post">
