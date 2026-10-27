@@ -1,0 +1,31 @@
+# Git 정보
+.git
+.gitignore
+
+# 내 컴퓨터에서 생성된 빌드 결과
+target/
+
+# IDE 설정
+.settings/
+.classpath
+.project
+.vscode/
+.idea/
+*.launch
+
+# 문서와 로그
+docs/
+*.log
+
+# 환경변수 및 인증 파일
+.env
+.env.*
+**/Wallet_*
+**/*.zip
+**/*.sso
+**/*.p12
+**/*.jks
+**/*.pem
+**/tnsnames.ora
+**/sqlnet.ora
+**/ojdbc.properties
