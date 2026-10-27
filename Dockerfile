@@ -16,8 +16,16 @@ RUN sed -i 's/\r$//' mvnw \
 # 2. 빌드된 앱을 실행할 환경
 FROM eclipse-temurin:21-jre
 
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends unzip \
+	&& rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=build /app/target/classbridge-0.0.1-SNAPSHOT.jar app.jar
+COPY start.sh start.sh
 
-ENTRYPOINT [ "java", "-jar", "app.jar" ]
+RUN sed -i 's/\r$//' start.sh \
+    && chmod +x start.sh
+
+ENTRYPOINT ["/app/start.sh"]
