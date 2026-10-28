@@ -30,6 +30,12 @@
         </div>
 
         <p>
+            <a th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
+                授業一覧を見る
+            </a>
+        </p>
+
+        <p>
             <a th:href="@{/students/{id}/edit(id=${student.id})}">
                 学生情報を編集する
             </a>

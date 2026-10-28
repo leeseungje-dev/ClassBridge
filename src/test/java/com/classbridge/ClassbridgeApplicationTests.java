@@ -3,6 +3,10 @@ package com.classbridge;
 import com.classbridge.user.User;
 import com.classbridge.student.Student;
 import com.classbridge.student.StudentNotFoundException;
+import com.classbridge.lesson.Lesson;
+import com.classbridge.lesson.LessonMapper;
+import com.classbridge.lesson.LessonService;
+import com.classbridge.lesson.LessonNotFoundException;
 
 // MyBatis
 import com.classbridge.user.UserMapper;
@@ -23,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import java.util.UUID;
 import java.util.List;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 // 원래 있던거.
 import org.junit.jupiter.api.Test;
@@ -34,7 +39,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /*
  * author : LEE SEUNGJE
- * date : 2026.10.10 ~ 2026.10.19
+ * date : 2026.10.10 ~ 2026.10.27
  */
 
 // Test 에 필요한 Spring 환경(DB 연결, Repository 등)을 준비하라는 표시
@@ -57,6 +62,12 @@ class ClassbridgeApplicationTests {
 	
 	@Autowired
 	private StudentService studentService;
+	
+	@Autowired
+	private LessonMapper lessonMapper;
+	
+	@Autowired
+	private LessonService lessonService;
 	
 	// method
 	// Test 로 실행할 메소드
@@ -823,6 +834,850 @@ class ClassbridgeApplicationTests {
 		
 		assertNull(deletedStudent);
 		
+	}
+	
+	// 수업 저장, 조회 및 다른 강사의 조회 차단 확인
+	@Test
+	@Transactional
+	void saveAndFindLessonOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 등록
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 해당 학생의 수업 등록
+		LocalDateTime lessonAt = LocalDateTime.of(2026, 11, 1, 15, 30);
+		
+		Lesson lesson = new Lesson(student.getId(), lessonAt);
+		
+		int insertedRows = lessonMapper.insertLesson(lesson);
+		
+		assertEquals(1, insertedRows);
+		assertNotNull(lesson.getId());
+		
+		// 소유 강사로 조회
+		Lesson foundLesson = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(foundLesson);
+		assertEquals(lesson.getId(), foundLesson.getId());
+		assertEquals(student.getId(), foundLesson.getStudentId());
+		assertEquals(lessonAt, foundLesson.getLessonAt());
+		
+		// DB 기본값과 선택 항목 확인
+		assertEquals("SCHEDULED", foundLesson.getStatus());
+		assertNull(foundLesson.getStatusMemo());
+		assertNotNull(foundLesson.getCreatedAt());
+		
+		// 다른 강사로 조회하면 결과가 없는지 확인
+		Lesson inaccessibleLesson = lessonMapper.findLessonById(lesson.getId(), otherInstructor.getId());
+		
+		assertNull(inaccessibleLesson);
+		
+	}
+	
+	// 학생별 수업 목록이 올바르게 조회되는지 Test
+	// 1. 수업이 없으면 빈 목록(LIst)인지
+	// 2. 등록 순서와 관계없이 수업 일시순으로 나오는지
+	// 3. 다른 강사가 검색하면 빈 목록인지
+	@Test
+	@Transactional
+	void findLessonsByStudentOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 같은 강사의 학생 두 명 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+
+		Student otherStudent = new Student(
+				instructor.getId(),
+				"鈴木花子",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(otherStudent);
+		
+		// 검사 1 : 수업이 없으면 빈 목록
+		List<Lesson> emptyLessons = lessonMapper.findLessonsByStudentId(student.getId(), instructor.getId());
+		assertTrue(emptyLessons.isEmpty());
+		
+		// 늦은 수업을 먼저 등록
+		Lesson laterLesson = new Lesson(
+				student.getId(), 
+				LocalDateTime.of(2026, 11, 10, 15, 30)
+			);
+		lessonMapper.insertLesson(laterLesson);
+		
+		// 이른 수업을 나중에 등록
+		Lesson earlierLesson = new Lesson(
+				student.getId(), 
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(earlierLesson);
+		
+		// 다른 학생의 수업도 등록 (직접 비교하지는 않지만 해당 강사 id 로 조회시 검색 안되는지 확인 가능함)
+		Lesson otherStudentLesson = new Lesson(
+				otherStudent.getId(), 
+				LocalDateTime.of(2026, 11, 5, 15, 30)
+			);
+		lessonMapper.insertLesson(otherStudentLesson);
+		
+		// 검사 2 : 해당 학생의 수업만 일시순으로 조회 (student, instructor)
+		List<Lesson> lessons = lessonMapper.findLessonsByStudentId(student.getId(), instructor.getId());
+		
+		assertEquals(2, lessons.size());
+		assertEquals(earlierLesson.getId(), lessons.get(0).getId());
+		assertEquals(laterLesson.getId(), lessons.get(1).getId());
+		
+		// 검사 3 : 다른 강사로 조회하면 빈 목록
+		List<Lesson> inaccessibleLessons = lessonMapper.findLessonsByStudentId(student.getId(), otherInstructor.getId());
+		
+		assertTrue(inaccessibleLessons.isEmpty());
+		
+	}
+	
+	// 수업 날짜 변경 및 다른 강사의 변경 차단 Test
+	@Test
+	@Transactional
+	void updateLessonDateTimeOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 등록
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록
+		LocalDateTime originalDateTime = LocalDateTime.of(2026, 11, 1, 15, 30);
+		
+		Lesson lesson = new Lesson(student.getId(), originalDateTime);
+		lessonMapper.insertLesson(lesson);
+		
+		// DB 에서 등록 시각 등 기존 정보 확보
+		Lesson original = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(original);
+		
+		// 변경할 수업 일시
+		LocalDateTime newDateTime = LocalDateTime.of(2026, 11, 2, 16, 0);
+		
+		// 검사 1 : 다른 강사의 변경은 거절
+		int rejectedRows = lessonMapper.updateLessonDateTime(
+				lesson.getId(),
+				otherInstructor.getId(),
+				newDateTime
+			);
+		
+		assertEquals(0, rejectedRows);
+		
+		// DB 의 수업 일시가 그대로인지 확인
+		Lesson unchanged = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(unchanged);
+		assertEquals(originalDateTime, unchanged.getLessonAt());
+		
+		// 검사 2 : 소유 강사의 변경은 성공
+		int updatedRows = lessonMapper.updateLessonDateTime(
+				lesson.getId(),
+				instructor.getId(),
+				newDateTime
+			);
+		
+		assertEquals(1, updatedRows);
+		
+		// DB 에서 다시 조회해서 변경 결과 확인
+		Lesson updated = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(updated);
+		assertEquals(newDateTime, updated.getLessonAt());
+		
+		// 수정 대상이 아닌 값은 그대로인지 확인
+		assertEquals(original.getId(), updated.getId());
+		assertEquals(original.getStudentId(), updated.getStudentId());
+		assertEquals(original.getStatus(), updated.getStatus());
+		assertEquals(original.getStatusMemo(), updated.getStatusMemo());
+		assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+	}
+	
+	// 수업 상태, 메모 변경 및 소유 강사 확인 Test
+	@Test
+	@Transactional
+	void updateLessonStatusOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생과 수업 등록
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		LocalDateTime lessonAt = LocalDateTime.of(2026, 11, 1, 15, 30);
+		
+		Lesson lesson = new Lesson(student.getId(), lessonAt);
+		lessonMapper.insertLesson(lesson);
+		
+		// DB 에서 기존 정보 확보
+		Lesson original = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(original);
+		
+		// 검사 1 : 다른 강사의 상태, 메모 변경은 거절
+		int rejectedRows = lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				otherInstructor.getId(),
+				"CANCELLED",
+				"変更されてはいけないメモ"
+			);
+		
+		assertEquals(0, rejectedRows);
+		
+		// DB 의 상태와 메모가 그대로인지 확인
+		Lesson unchanged = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(unchanged);
+		assertEquals(original.getStatus(), unchanged.getStatus());
+		assertEquals(original.getStatusMemo(), unchanged.getStatusMemo());
+		
+		// 검사 2 : 소유 강사는 취소 상태와 사유를 저장 가능한지 확인
+		int updatedRows = lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"CANCELLED",
+				"体調不良のためキャンセル"
+			);
+		assertEquals(1, updatedRows);
+		
+		Lesson updated = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(updated);
+		assertEquals("CANCELLED", updated.getStatus());
+		assertEquals("体調不良のためキャンセル", updated.getStatusMemo());
+		
+		// 검사 3 : 상태를 예정으로 되돌리며 기존 메모 삭제
+		int clearedRows = lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"SCHEDULED",
+				null
+			);
+		assertEquals(1, clearedRows);
+		
+		Lesson cleared = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(cleared);
+		assertEquals("SCHEDULED", cleared.getStatus());
+		assertNull(cleared.getStatusMemo());
+		
+		// 두 번의 수정 모두 다른 열을 변경하지 않았는지 확인
+		assertEquals(original.getId(), updated.getId());
+		assertEquals(original.getStudentId(), updated.getStudentId());
+		assertEquals(original.getLessonAt(), updated.getLessonAt());
+		assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+
+		assertEquals(original.getId(), cleared.getId());
+		assertEquals(original.getStudentId(), cleared.getStudentId());
+		assertEquals(original.getLessonAt(), cleared.getLessonAt());
+		assertEquals(original.getCreatedAt(), cleared.getCreatedAt());
+	}
+	
+	/*
+	 * LessonService Test
+	 */
+	// 본인 학생의 수업 등록 성공
+	@Test
+	@Transactional
+	void registerLessonForOwner() {
+		// 강사와 해당 강사의 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		LocalDateTime lessonAt = LocalDateTime.of(2026, 11, 1, 15, 30);
+		
+		// LessonService 를 통한 수업 등록
+		Long lessonId = lessonService.registerLesson(
+				student.getId(),
+				instructor.getId(),
+				lessonAt
+			);
+		
+		// 반환된 id 로 실제 저장 결과 확인
+		assertNotNull(lessonId);
+		
+		Lesson savedLesson = lessonMapper.findLessonById(
+				lessonId,
+				instructor.getId()
+			);
+		
+		assertNotNull(savedLesson);
+		assertEquals(student.getId(), savedLesson.getStudentId());
+		assertEquals(lessonAt, savedLesson.getLessonAt());
+		assertEquals("SCHEDULED", savedLesson.getStatus());
+	}
+	
+	// 다른 강사 학생의 수업 등록 거절
+	@Test
+	@Transactional
+	void rejectLessonRegisterationForOtherInstructor() {
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 다른 강사 id 로 수업 등록 시도
+		boolean rejected = false;
+		
+		try {
+			lessonService.registerLesson(
+					student.getId(),
+					otherInstructor.getId(),
+					LocalDateTime.of(2026, 11, 1, 15, 30)
+				);
+			
+		} catch (StudentNotFoundException e) {
+			rejected = true;
+		}
+		
+		// 등록이 거절됐는지 확인
+		assertTrue(rejected);
+		
+		// 실제 소유 강사 기준으로 조회해도 수업이 없는지 확인
+		assertTrue(lessonMapper.findLessonsByStudentId(student.getId(), instructor.getId()).isEmpty());
+	}
+	
+	// 수업 일시가 없으면 등록 거절되는지
+	@Test
+	@Transactional
+	void rejectLessonRegistrationWithoutDateTime() {
+		// 강사와 해당 강사의 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 일시 없이 등록 시도
+		boolean rejected = false;
+		
+		try {
+			lessonService.registerLesson(
+					student.getId(), 
+					instructor.getId(), 
+					null
+				);
+			
+		} catch (IllegalArgumentException e) {
+			rejected = true;
+			
+			assertEquals("授業日時を入力してください。", e.getMessage());
+		}
+		
+		// 필수 입력값 없어서 거절됐는지 확인
+		assertTrue(rejected);
+		
+		// 실제로 수업이 저장되지 않았는지 확인
+		assertTrue(lessonMapper.findLessonsByStudentId(student.getId(), instructor.getId()).isEmpty());
+	}
+	
+	// 자기 수업의 일시 수정 성공하는지
+	@Test
+	@Transactional
+	void updateLessonDateTimeThroughService() {
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수정할 수업 준비
+		Lesson lesson = new Lesson(student.getId(), LocalDateTime.of(2026, 11, 1, 15, 30));
+		lessonMapper.insertLesson(lesson);
+		
+		// 등록 시각을 포함한 기존 DB 값 확보
+		Lesson original = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(original);
+		
+		LocalDateTime newDateTime = LocalDateTime.of(2026, 11, 2, 16, 0);
+		
+		// LessonService 를 통해 일시 수정
+		lessonService.updateLessonDateTime(
+				lesson.getId(), 
+				instructor.getId(), 
+				newDateTime
+			);
+		
+		// DB 의 일시가 변경됐는지 확인
+		Lesson updated = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(updated);
+		assertEquals(newDateTime, updated.getLessonAt());
+		
+		// 수정 대상이 아닌 값은 그대로인지 확인
+		assertEquals(original.getId(), updated.getId());
+		assertEquals(original.getStudentId(), updated.getStudentId());
+		assertEquals(original.getStatus(), updated.getStatus());
+		assertEquals(original.getStatusMemo(), updated.getStatusMemo());
+		assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+	}
+	
+	// 다른 강사의 수정 요청은 거절되는지 확인
+	@Test
+	@Transactional
+	void rejectOtherInstructorLessonDateTimeUpdateThroughService() {
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 준비와 수업 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		LocalDateTime originalDateTime = LocalDateTime.of(2026, 11, 1, 15, 30);
+		
+		Lesson lesson = new Lesson(student.getId(), originalDateTime);
+		lessonMapper.insertLesson(lesson);
+		
+		// 다른 강사 id 로 수정 시도
+		boolean rejected = false;
+		
+		try {
+			lessonService.updateLessonDateTime(
+					lesson.getId(), 
+					otherInstructor.getId(), 
+					LocalDateTime.of(2026, 11, 2, 16, 0)
+				);
+			
+		} catch (LessonNotFoundException e) {
+			rejected = true;
+		}
+		
+		assertTrue(rejected);
+		
+		// 실제 소유 강사 기준으로 조회 후 변경되지 않았는지 확인
+		Lesson unchanged = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(unchanged);
+		assertEquals(originalDateTime, unchanged.getLessonAt());
+	}
+	
+	// 수업 일시가 없으면 수정 거절하는지
+	@Test
+	@Transactional
+	void rejectNullLessonDateTimeUpdateThroughService() {
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 기존 일시가 있는 수업 준비
+		LocalDateTime originalDateTime = LocalDateTime.of(2026, 11, 1, 15, 30);
+		
+		Lesson lesson = new Lesson(student.getId(), originalDateTime);
+		lessonMapper.insertLesson(lesson);
+		
+		// 수업 일시를 null 로 수정 시도
+		boolean rejected = false;
+		
+		try {
+			lessonService.updateLessonDateTime(
+					lesson.getId(), 
+					instructor.getId(), 
+					null
+				);
+			
+		} catch (IllegalArgumentException e) {
+			rejected = true;
+			
+			assertEquals("授業日時を入力してください。", e.getMessage());
+		}
+		
+		assertTrue(rejected);
+		
+		// DB 의 원래 일시가 유지되는지 확인
+		Lesson unchanged = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(unchanged);
+		assertEquals(originalDateTime, unchanged.getLessonAt());
+	}
+	
+	// status 변경, statusMemo 공백 정리와 삭제 확인
+	@Test
+	@Transactional
+	void updateLessonStatusThroughService() {
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 준비
+		Lesson lesson = new Lesson(student.getId(), LocalDateTime.of(2026, 11, 1, 15, 30));
+		lessonMapper.insertLesson(lesson);
+		
+		// 변경 전 DB 정보 확보
+		Lesson original = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(original);
+		
+		// 검사 1 : "CANCELLED" status 와 공백이 있는 statusMemo 입력
+		lessonService.updateLessonStatus(
+				lesson.getId(), 
+				instructor.getId(), 
+				"CANCELLED",
+				"   体調不良のためキャンセル    "
+			);
+		
+		Lesson updated = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(updated);
+		assertEquals("CANCELLED", updated.getStatus());
+		assertEquals("体調不良のためキャンセル", updated.getStatusMemo());
+		
+		// 검사 2 : "SCHEDULED" 로 공백만 있는 statusMemo 입력
+		lessonService.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"SCHEDULED",
+				"               "
+			);
+		
+		Lesson cleared = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(cleared);
+		assertEquals("SCHEDULED", cleared.getStatus());
+		assertNull(cleared.getStatusMemo());
+		
+		// 두 번의 변경 모두 수정 대상이 아닌 값은 그대로인지 확인
+		assertEquals(original.getId(), updated.getId());
+		assertEquals(original.getStudentId(), updated.getStudentId());
+		assertEquals(original.getLessonAt(), updated.getLessonAt());
+		assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+		
+		assertEquals(original.getId(), cleared.getId());
+		assertEquals(original.getStudentId(), cleared.getStudentId());
+		assertEquals(original.getLessonAt(), cleared.getLessonAt());
+		assertEquals(original.getCreatedAt(), cleared.getCreatedAt());
+	}
+	
+	// 다른 강사의 수업 상태 변경 거절되는지
+	@Test
+	@Transactional
+	void rejectOtherInstructorLessonStatusUpdateThroughService() {
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 준비와 수업 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Lesson lesson = new Lesson(student.getId(), LocalDateTime.of(2026, 11, 1, 15, 30));
+		lessonMapper.insertLesson(lesson);
+		
+		// 다른 강사 id 로 status 변경 시도
+		boolean rejected = false;
+		
+		try {
+			lessonService.updateLessonStatus(
+					lesson.getId(),
+					otherInstructor.getId(),
+					"CANCELLED",
+					"変更されてはいけないメモ"
+				);
+			
+		} catch (LessonNotFoundException e) {
+			rejected = true;
+		}
+		
+		// 요청이 거절됐는지 확인
+		assertTrue(rejected);
+		
+		// 실제 담당 강사 기준으로 DB 조회
+		Lesson unchanged = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		// 원래 상태와 메모가 그대로인지 확인
+		assertNotNull(unchanged);
+		assertEquals("SCHEDULED", unchanged.getStatus());
+		assertNull(unchanged.getStatusMemo());
+	}
+	
+	// 네 가지 status 가 아닌 status 는 거절되는지 확인
+	@Test
+	@Transactional
+	void rejectInvalidLessonStatusThroughService() {
+		// 강사와 학생, 수업 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		// 네 가지 status 이외의 상태값으로 변경 시도
+		boolean rejected = false;
+		
+		try {
+			lessonService.updateLessonStatus(
+					lesson.getId(),
+					instructor.getId(),
+					"UNKNOWN",
+					"変更されてはいけないメモ"
+				);
+			
+		} catch (IllegalArgumentException e) {
+			rejected = true;
+			
+			assertEquals("授業の状態が正しくありません。", e.getMessage());
+		}
+		
+		assertTrue(rejected);
+		
+		// 상태와 메모 전부 변경되지 않았는지 확인
+		Lesson unchanged = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(unchanged);
+		assertEquals("SCHEDULED", unchanged.getStatus());
+		assertNull(unchanged.getStatusMemo());
+	}
+	
+	// 1000자를 넘는 statusMemo 는 거절되는지 확인
+	@Test
+	@Transactional
+	void rejectTooLongLessonStatusMemoThroughService() {
+		// 강사와 학생, 수업 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		// 1,001자 statusMemo 준비
+		String longMemo = "잉".repeat(1001);
+		
+		// 긴 statusMemo 로 변경 시도
+		boolean rejected = false;
+		
+		try {
+			lessonService.updateLessonStatus(
+					lesson.getId(),
+					instructor.getId(),
+					"CANCELLED",
+					longMemo
+				);
+			
+		} catch (IllegalArgumentException e) {
+			rejected = true;
+			
+			assertEquals("状態メモは1000文字以内で入力してください。", e.getMessage());
+		}
+		
+		assertTrue(rejected);
+		
+		// statusMemo 이외의 상태도 변경되지 않았는지 확인
+		Lesson unchanged = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(unchanged);
+		assertEquals("SCHEDULED", unchanged.getStatus());
+		assertNull(unchanged.getStatusMemo());
 	}
 	
 }

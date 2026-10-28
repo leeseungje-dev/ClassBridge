@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>授業一覧 | ClassBridge</title>
+    </head>
+    <body>
+        <h1>授業一覧</h1>
+
+        <p th:text="|学生名：${student.name}|"></p>
+
+        <p>
+            <a th:href="@{/students/{studentId}/lessons/new(studentId=${student.id})}">
+                授業を登録する
+            </a>
+        </p>
+
+        <p th:if="${#lists.isEmpty(lessons)}">
+            授業はまだ登録されていません。
+        </p>
+
+        <table th:if="${!#lists.isEmpty(lessons)}">
+            <thead>
+                <tr>
+                    <th>授業日時</th>
+                    <th>状態</th>
+                    <th>状態メモ</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr th:each="lesson : ${lessons}">
+                    <td th:text="${#temporals.format(
+                        lesson.lessonAt, 'yyyy/MM/dd HH:mm'
+                    )}"></td>
+
+                    <td th:switch="${lesson.status}">
+                        <span th:case="SCHEDULED">予定</span>
+                        <span th:case="ATTENDED">出席</span>
+                        <span th:case="CANCELLED">キャンセル</span>
+                        <span th:case="ABSENT">欠席</span>
+                        <span th:case="*">不明</span>
+                    </td>
+
+                    <td th:text="${lesson.statusMemo}"
+                        style="white-space: pre-wrap;">
+                    </td>
+
+                    <td>
+                        <a th:href="@{/lessons/{id}/edit(id=${lesson.id})}">
+                            日時を変更する
+                        </a>
+
+                        <a th:href="@{/lessons/{id}/status(id=${lesson.id})}">
+                            状態を変更する
+                        </a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <a th:href="@{/students/{id}(id=${student.id})}">
+            学生詳細へ戻る
+        </a>
+    </body>
+</html>

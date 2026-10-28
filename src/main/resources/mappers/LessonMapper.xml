@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.classbridge.lesson.LessonMapper">
+	
+	<!-- 수업 등록 -->
+	<insert id="insertLesson"
+			parameterType="com.classbridge.lesson.Lesson">
+		
+		<selectKey keyProperty="id"
+					resultType="java.lang.Long"
+					order="BEFORE">
+			SELECT LESSONS_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+		
+		INSERT INTO LESSONS (
+			ID,
+			STUDENT_ID,
+			LESSON_AT
+		)
+		VALUES (
+			#{id},
+			#{studentId},
+			#{lessonAt, jdbcType=TIMESTAMP}
+		)
+	</insert>
+	
+	<!-- 수업 조회 및 소유 강사 확인 -->
+	<select id="findLessonById"
+			resultType="com.classbridge.lesson.Lesson">
+		
+		SELECT L.ID,
+			L.STUDENT_ID AS "studentId",
+			L.LESSON_AT AS "lessonAt",
+			L.STATUS,
+			L.STATUS_MEMO AS "statusMemo",
+			L.CREATED_AT AS "createdAt"
+		FROM LESSONS L
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		WHERE L.ID = #{id}
+			AND S.INSTRUCTOR_ID = #{instructorId}
+		
+	</select>
+	
+	<!-- 학생별 수업 목록 조회 및 소유 강사 확인 -->
+	<select id="findLessonsByStudentId"
+			resultType="com.classbridge.lesson.Lesson">
+		
+		SELECT L.ID,
+			L.STUDENT_ID AS "studentId",
+			L.LESSON_AT AS "lessonAt",
+			L.STATUS,
+			L.STATUS_MEMO AS "statusMemo",
+			L.CREATED_AT AS "createdAt"
+		FROM LESSONS L
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		WHERE L.STUDENT_ID = #{studentId}
+			AND S.INSTRUCTOR_ID = #{instructorId}
+		ORDER BY L.LESSON_AT ASC, L.ID ASC
+		
+	</select>
+	
+	<!-- 
+		수업 일시 변경 및 소유 강사 확인 
+		서브쿼리 : SQL 안에 있는 또 다른 조회문
+		요청한 수업 id && 그 수업의 학생 id가 해당 강사 id 에 속한다면 변경
+		(바뀌는 건 LESSON_AT 뿐임)
+	-->
+	<update id="updateLessonDateTime">
+		
+		UPDATE LESSONS
+		SET LESSON_AT = #{lessonAt, jdbcType=TIMESTAMP}
+		WHERE ID = #{id}
+			AND STUDENT_ID IN (
+				SELECT S.ID
+				FROM STUDENTS S
+				WHERE S.INSTRUCTOR_ID = #{instructorId}
+			)
+		
+	</update>
+	
+	<!-- 수업 상태, 메모 수정 및 소유 강사 확인-->
+	<update id="updateLessonStatus">
+		
+		UPDATE LESSONS
+		SET STATUS = #{status},
+			STATUS_MEMO = #{statusMemo, jdbcType=VARCHAR}
+		WHERE ID = #{id}
+			AND STUDENT_ID IN (
+				SELECT S.ID
+				FROM STUDENTS S
+				WHERE S.INSTRUCTOR_ID = #{instructorId} 
+			)
+		
+	</update>
+	
+</mapper>

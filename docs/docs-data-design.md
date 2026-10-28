@@ -61,3 +61,45 @@ Java 클래스 이름: User
 | CURRENT_LEVEL | VARCHAR2(50 CHAR) | 선택 입력 | 현재 학습 수준 |
 | INSTRUCTOR_MEMO | VARCHAR2(1000 CHAR) | 선택 입력 | 강사용 메모 |
 | CREATED_AT | DATE | NOT NULL, 기본값 CURRENT_DATE | 등록 시각 |
+
+## 수업 일정 및 출결
+
+테이블 이름: LESSONS
+Java 클래스 이름: Lesson
+
+- 한 학생은 여러 수업을 가진다.
+- 수업 한 건은 한 학생에게 속한다.
+- LESSONS.STUDENT_ID는 STUDENTS.ID를 참조하는 외래 키다.
+- 수업 등록 시 기본 상태는 SCHEDULED이다.
+- 상태 메모와 수업일보는 별도로 관리한다.
+- 로그인한 강사는 자신의 학생에게 속한 수업만 조회·변경할 수 있다.
+
+### 수업 테이블 상세 설계
+
+| 열 이름 | Oracle 자료형 | 제약조건 | 의미 |
+|---|---|---|---|
+| ID | NUMBER(19) | PRIMARY KEY | 수업 식별 번호 |
+| STUDENT_ID | NUMBER(19) | NOT NULL, FOREIGN KEY | 수업을 받는 학생 ID |
+| LESSON_AT | DATE | NOT NULL | 수업 날짜와 시간 |
+| STATUS | VARCHAR2(20 CHAR) | NOT NULL, 기본값 SCHEDULED, CHECK | 수업 상태 |
+| STATUS_MEMO | VARCHAR2(1000 CHAR) | 선택 입력 | 취소·결석 등의 상태 메모 |
+| CREATED_AT | DATE | NOT NULL, 기본값 CURRENT_DATE | 일정 등록 시각 |
+
+- ID는 LESSONS_SEQ 시퀀스로 생성한다.
+- LESSON_AT은 실제 수업이 예정된 날짜와 시간이다.
+- CREATED_AT은 해당 일정을 시스템에 등록한 시각이다.
+- Oracle DATE는 날짜와 시·분·초를 저장한다.
+
+### 수업 상태
+
+| DB 저장값 | 의미 | 화면 표시 |
+|---|---|---|
+| SCHEDULED | 예정 | 予定 |
+| ATTENDED | 출석 | 出席 |
+| CANCELLED | 취소 | キャンセル |
+| ABSENT | 결석 | 欠席 |
+
+- CHECK 제약조건으로 위 네 가지 상태값만 허용한다.
+- 취소·결석도 수업 이력으로 남기므로 상태 변경으로 처리한다.
+- 정식 수업일보는 출석 상태인 수업에만 작성할 수 있다.
+- 취소·결석 사유는 STATUS_MEMO에 기록한다.
