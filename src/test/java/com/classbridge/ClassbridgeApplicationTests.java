@@ -7,6 +7,14 @@ import com.classbridge.lesson.Lesson;
 import com.classbridge.lesson.LessonMapper;
 import com.classbridge.lesson.LessonService;
 import com.classbridge.lesson.LessonNotFoundException;
+import com.classbridge.report.LessonReport;
+import com.classbridge.report.LessonReportMapper;
+import com.classbridge.report.LessonReportService;
+import com.classbridge.report.ObservationInput;
+import com.classbridge.report.ObservationUpdateInput;
+import com.classbridge.report.LessonReportNotFoundException;
+import com.classbridge.observation.LearningObservation;
+import com.classbridge.observation.LearningObservationMapper;
 
 // MyBatis
 import com.classbridge.user.UserMapper;
@@ -26,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -39,7 +48,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /*
  * author : LEE SEUNGJE
- * date : 2026.10.10 ~ 2026.10.27
+ * date : 2026.10.10 ~ 2026.11.01
  */
 
 // Test 에 필요한 Spring 환경(DB 연결, Repository 등)을 준비하라는 표시
@@ -68,6 +77,15 @@ class ClassbridgeApplicationTests {
 	
 	@Autowired
 	private LessonService lessonService;
+	
+	@Autowired
+	private LessonReportMapper lessonReportMapper;
+	
+	@Autowired
+	private LearningObservationMapper learningObservationMapper;
+	
+	@Autowired
+	private LessonReportService lessonReportService;
 	
 	// method
 	// Test 로 실행할 메소드
@@ -1678,6 +1696,2053 @@ class ClassbridgeApplicationTests {
 		assertNotNull(unchanged);
 		assertEquals("SCHEDULED", unchanged.getStatus());
 		assertNull(unchanged.getStatusMemo());
+	}
+	
+	// 일보 등록, 조회 및 다른 강사의 조회 거절 Test
+	@Test
+	@Transactional
+	void saveAndFindLessonReportOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업을 등록하고 출석 상태로 변경
+		Lesson lesson = new Lesson(student.getId(), LocalDateTime.of(2026, 11, 1, 15, 30));
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 검사 1 : 일보 등록과 id 발급되는지
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"過去形を練習しました。",
+				"次回は過去形を復習する。"
+			);
+		
+		int insertedRows = lessonReportMapper.insertLessonReport(report);
+		
+		assertEquals(1, insertedRows);
+		assertNotNull(report.getId());
+		
+		// 검사 2 : 소유 강사는 저장된 일보 조회 가능한지
+		LessonReport found = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNotNull(found);
+		assertEquals(report.getId(), found.getId());
+		assertEquals(lesson.getId(), found.getLessonId());
+		assertEquals("過去形を練習しました。", found.getContent());
+		assertEquals("次回は過去形を復習する。", found.getNextCheck());
+		assertNotNull(found.getCreatedAt());
+		assertNotNull(found.getUpdatedAt());
+		
+		// 검사 3 : 다른 강사는 같은 수업의 일보가 검색되지 않는지
+		LessonReport inaccessible = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), otherInstructor.getId());
+		
+		assertNull(inaccessible);
+	}
+	
+	// 관찰 기록 여러 건의 등록, 조회 및 다른 강사의 조회 거절 Test
+	@Test
+	@Transactional
+	void saveAndFindObservationsOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 수업일보 등록
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"過去形を練習しました。",
+				"次回は過去形を復習する。"
+			);
+		lessonReportMapper.insertLessonReport(report);
+		
+		// 검사 1 : 같은 일보에 관찰 기록 두 건 등록
+		LearningObservation grammar = new LearningObservation(
+				report.getId(),
+				"GRAMMAR",
+				"過去形",
+				 "過去形を使うことができた。"
+			);
+		assertEquals(1, learningObservationMapper.insertLearningObservation(grammar));
+		
+		LearningObservation pronunciation = new LearningObservation(
+				report.getId(),
+				"PRONUNCIATION",
+				"発音",
+				"ゆっくり話すと正しく発音できた。"
+			);
+		assertEquals(1, learningObservationMapper.insertLearningObservation(pronunciation));
+		
+		assertNotNull(grammar.getId());
+		assertNotNull(pronunciation.getId());
+		assertNotEquals(grammar.getId(), pronunciation.getId());
+		
+		// 검사 2 : 담당 강사는 두 기록을 id 오름차순으로 조회되는지
+		List<LearningObservation> found = learningObservationMapper.findObservationsByLessonReportId(report.getId(), instructor.getId());
+		assertEquals(2, found.size());
+		
+		LearningObservation first = found.get(0);
+		
+		assertEquals(grammar.getId(), first.getId());
+		assertEquals(report.getId(), first.getLessonReportId());
+		assertEquals("GRAMMAR", first.getCategory());
+		assertEquals("過去形", first.getItem());
+		assertEquals("過去形を使うことができた。", first.getMemo());
+		assertNotNull(first.getCreatedAt());
+		assertNotNull(first.getUpdatedAt());
+		
+		LearningObservation second = found.get(1);
+		
+		assertEquals(pronunciation.getId(), second.getId());
+		assertEquals(report.getId(), second.getLessonReportId());
+		assertEquals("PRONUNCIATION", second.getCategory());
+		assertEquals("発音", second.getItem());
+		assertEquals("ゆっくり話すと正しく発音できた。", second.getMemo());
+		assertNotNull(second.getCreatedAt());
+		assertNotNull(second.getUpdatedAt());
+		
+		// 검사 3 : 다른 강사는 같은 일보의 관찰 기록을 조회할 수 없는지
+		List<LearningObservation> inaccessible = learningObservationMapper.findObservationsByLessonReportId(report.getId(), otherInstructor.getId());
+		
+		assertTrue(inaccessible.isEmpty());
+	}
+	
+	// 담당 강사만 일보를 수정할 수 있는지 Test
+	@Test
+	@Transactional
+	void updateLessonReportOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 학생과 수업 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+
+		// 수정 전 일보 등록
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"過去形を練習しました。",
+				"次回は過去形を復習する。"
+			);
+		lessonReportMapper.insertLessonReport(report);
+		
+		// DB 에서 최초 작성, 수정 시각 확보
+		LessonReport original = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		assertNotNull(original);
+		
+		// Java 객체에 수정할 내용 설정
+		report.setContent("会話を練習しました。");
+		report.setNextCheck(null);
+		
+		// 검사 1 : 다른 강사의 수정 요청은 거절되는지
+		int rejectedRows = lessonReportMapper.updateLessonReport(report, otherInstructor.getId());
+		assertEquals(0, rejectedRows);
+		
+		LessonReport unchanged = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNotNull(unchanged);
+		assertEquals("過去形を練習しました。", unchanged.getContent());
+		assertEquals("次回は過去形を復習する。", unchanged.getNextCheck());
+		assertEquals(original.getUpdatedAt(), unchanged.getUpdatedAt());
+		
+		// 검사 2 : 담당 강사의 수정 요청은 성공하는지
+		int updatedRows = lessonReportMapper.updateLessonReport(report, instructor.getId());
+		assertEquals(1, updatedRows);
+		
+		LessonReport updated = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNotNull(updated);
+		assertEquals("会話を練習しました。", updated.getContent());
+		assertNull(updated.getNextCheck());
+		assertNotNull(updated.getUpdatedAt());
+		
+		// 수정 대상이 아닌 값은 그대로인지 확인
+		assertEquals(original.getId(), updated.getId());
+		assertEquals(original.getLessonId(), updated.getLessonId());
+		assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+	}
+	
+	// 관찰 기록 수정 시 소유강사와 소속 일보 확인
+	@Test
+	@Transactional
+	void updateOvservationOnlyForOwnerAndReport() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 같은 학생의 출석 상태의 수업 두 건 준비
+		Lesson firstLesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(firstLesson);
+		
+		lessonMapper.updateLessonStatus(
+				firstLesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+
+		Lesson secondLesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 2, 15, 30)
+			);
+		lessonMapper.insertLesson(secondLesson);
+		
+		lessonMapper.updateLessonStatus(
+				secondLesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 수업별 일보 준비
+		LessonReport firstReport = new LessonReport(
+				firstLesson.getId(),
+				"過去形を練習しました。",
+				null
+			);
+		lessonReportMapper.insertLessonReport(firstReport);
+
+		LessonReport secondReport = new LessonReport(
+				secondLesson.getId(),
+				"会話を練習しました。",
+				null
+				);
+		lessonReportMapper.insertLessonReport(secondReport);
+		
+		// 첫 번째 일보에 관찰 기록 등록
+		LearningObservation observation = new LearningObservation(
+				firstReport.getId(),
+				"GRAMMAR",
+				"過去形",
+				"過去形が難しかった。"
+			);
+		learningObservationMapper.insertLearningObservation(observation);
+		
+		// 변경 전 DB 정보 확보
+		List<LearningObservation> originals = learningObservationMapper.findObservationsByLessonReportId(firstReport.getId(), instructor.getId());
+		assertEquals(1, originals.size());
+		
+		LearningObservation original = originals.get(0);
+		
+		// Java 객체에 수정할 내용 설정
+		observation.setCategory("SPEAKING");
+		observation.setItem("会話");
+		observation.setMemo("自分で話すことができた。");
+		
+		// 검사 1 : 다른 강사의 수정 요청은 거절
+		int rejectedByOwner = learningObservationMapper.updateLearningObservation(
+				observation,
+				firstReport.getId(),
+				otherInstructor.getId()
+			);
+		assertEquals(0, rejectedByOwner);
+		
+		List<LearningObservation> afterRejectedOwner = learningObservationMapper.findObservationsByLessonReportId(firstReport.getId(), instructor.getId());
+		assertEquals(1, afterRejectedOwner.size());
+		
+		LearningObservation unchangedByOwner = afterRejectedOwner.get(0);
+		
+		assertEquals("GRAMMAR", unchangedByOwner.getCategory());
+	    assertEquals("過去形", unchangedByOwner.getItem());
+	    assertEquals("過去形が難しかった。", unchangedByOwner.getMemo());
+	    assertEquals(original.getUpdatedAt(), unchangedByOwner.getUpdatedAt());
+		
+		// 검사 2 : 담당 강사라도 다른 일보 id 를 넣으면 거절
+		int rejectedByReport = learningObservationMapper.updateLearningObservation(
+				observation,
+				secondReport.getId(),
+				instructor.getId()
+			);
+		assertEquals(0, rejectedByReport);
+		
+		List<LearningObservation> afterRejectedReport = learningObservationMapper.findObservationsByLessonReportId(firstReport.getId(), instructor.getId());
+		assertEquals(1, afterRejectedReport.size());
+		
+		LearningObservation unchangedByReport = afterRejectedReport.get(0);
+		
+		assertEquals("GRAMMAR", unchangedByReport.getCategory());
+	    assertEquals("過去形", unchangedByReport.getItem());
+	    assertEquals("過去形が難しかった。", unchangedByReport.getMemo());
+	    assertEquals(original.getUpdatedAt(), unchangedByReport.getUpdatedAt());
+		
+		// 검사 3 : 올바른 강사와 일보 id 면 수정 성공
+		int updatedRows = learningObservationMapper.updateLearningObservation(observation, firstReport.getId(), instructor.getId());
+		assertEquals(1, updatedRows);
+		
+		List<LearningObservation> updatedList = learningObservationMapper.findObservationsByLessonReportId(firstReport.getId(), instructor.getId());
+		assertEquals(1, updatedList.size());
+		
+		LearningObservation updated = updatedList.get(0);
+		
+		assertEquals("SPEAKING", updated.getCategory());
+	    assertEquals("会話", updated.getItem());
+	    assertEquals("自分で話すことができた。", updated.getMemo());
+	    assertNotNull(updated.getUpdatedAt());
+		
+		// 수정 대상이 아닌 값은 유지
+	    assertEquals(original.getId(), updated.getId());
+	    assertEquals(original.getLessonReportId(), updated.getLessonReportId());
+	    assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+	}
+	
+	// 다른 강사, 다른 일보의 삭제 요청은 거절되고, 올바른 삭제 시 선택한 관찰 기록만 삭제되는지 Test
+	@Test
+	@Transactional
+	void deleteObservationOnlyForOwnerAndReport() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 학생과 수업 두 건 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Lesson firstLesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(firstLesson);
+		
+		lessonMapper.updateLessonStatus(
+				firstLesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		Lesson secondLesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 2, 15, 30)
+			);
+		lessonMapper.insertLesson(secondLesson);
+		
+		lessonMapper.updateLessonStatus(
+				secondLesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 같은 강사의 일보 두 건 준비
+		LessonReport firstReport = new LessonReport(
+				firstLesson.getId(),
+				"過去形を練習しました。",
+				null
+			);
+		lessonReportMapper.insertLessonReport(firstReport);
+		
+		LessonReport secondReport = new LessonReport(
+				secondLesson.getId(),
+				"会話を練習しました。",
+				null
+			);
+		lessonReportMapper.insertLessonReport(secondReport);
+		
+		// 첫 번째 일보에 삭제할 관찰 기록과 보존할 기록 준비
+		LearningObservation target = new LearningObservation(
+				firstReport.getId(),
+				"GRAMMAR",
+				"過去形",
+				"過去形が難しかった。"
+			);
+	    learningObservationMapper.insertLearningObservation(target);
+
+	    LearningObservation remaining = new LearningObservation(
+	    		firstReport.getId(),
+	    		"PRONUNCIATION",
+	    		"発音",
+	    		"正しく発音できた。"
+	    	);
+	    learningObservationMapper.insertLearningObservation(remaining);
+		
+		// 검사 1 : 다른 강사의 삭제 요청은 거절되는지
+		int rejectedByOwner = learningObservationMapper.deleteLearningObservation(
+				target.getId(),
+				firstReport.getId(),
+				otherInstructor.getId()
+			);
+		assertEquals(0, rejectedByOwner);
+		
+		List<LearningObservation> afterRejectedOwner  = learningObservationMapper.findObservationsByLessonReportId(firstReport.getId(), instructor.getId());
+		
+		assertEquals(2, afterRejectedOwner.size());
+		assertEquals(target.getId(), afterRejectedOwner.get(0).getId());
+		assertEquals(remaining.getId(), afterRejectedOwner.get(1).getId());
+		
+		// 검사 2 : 담당 강사라도 다른 일보 id 를 넣으면 거절되는지
+		int rejectedByReport = learningObservationMapper.deleteLearningObservation(
+				target.getId(),
+				secondReport.getId(),
+				instructor.getId()
+			);
+		assertEquals(0, rejectedByReport);
+
+		List<LearningObservation> afterRejectedReport = learningObservationMapper.findObservationsByLessonReportId(firstReport.getId(), instructor.getId());
+
+		assertEquals(2, afterRejectedReport.size());
+		assertEquals(target.getId(), afterRejectedReport.get(0).getId());
+		assertEquals(remaining.getId(), afterRejectedReport.get(1).getId());
+		
+		// 검사 3 : 올바른 강사와 일보 id 면 상제 성공하는지
+		int deletedRows = learningObservationMapper.deleteLearningObservation(
+				target.getId(),
+				firstReport.getId(),
+				instructor.getId()
+			);
+		assertEquals(1, deletedRows);
+
+		// 선택한 기록만 삭제되고 다른 관찰 기록은 그대로 보존되는지
+		List<LearningObservation> afterDelete = learningObservationMapper.findObservationsByLessonReportId(firstReport.getId(), instructor.getId());
+
+		assertEquals(1, afterDelete.size());
+		assertEquals(remaining.getId(), afterDelete.get(0).getId());
+		assertEquals("PRONUNCIATION", afterDelete.get(0).getCategory());
+		assertEquals("発音", afterDelete.get(0).getItem());
+		assertEquals("正しく発音できた。", afterDelete.get(0).getMemo());
+		
+		// 부모 클래스의 객체인 수업일보와 수업이 유지되는지
+		assertNotNull(lessonReportMapper.findLessonReportByLessonId(firstLesson.getId(), instructor.getId()));
+		assertNotNull(lessonMapper.findLessonById(firstLesson.getId(), instructor.getId()));
+	}
+	
+	// 일보와 관찰 기록의 통합 및 공백 정리 확인
+	@Test
+	@Transactional
+	void registerLessonReportWithObservation() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 화면에서 받을 관찰 기록 입력값 두 건 준비
+		List<ObservationInput> inputs = new ArrayList<>();
+		
+		inputs.add(new ObservationInput(
+				"      GRAMMAR  ",
+				"  過去形       ",
+				"     過去形を使うことができた。     "
+			));
+		
+		inputs.add(new ObservationInput(
+				"    PRONUNCIATION    ",
+				"       発音    ",
+				"  正しく発音できた。      "
+			));
+		
+		// LessonReportService 한 번 호출로 일보와 관찰 기록 저장
+		Long reportId = lessonReportService.registerLessonReport(
+				lesson.getId(),
+				instructor.getId(),
+				"             過去形を練習しました。    ",
+				"  次回は過去形を復習する。         ",
+				inputs
+			);
+		
+		assertNotNull(reportId);
+		
+		// 검사 1 : 일보 저장 및 앞뒤 공백 정리됐는지
+		LessonReport savedReport = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNotNull(savedReport);
+		assertEquals(lesson.getId(), savedReport.getLessonId());
+		assertEquals("過去形を練習しました。", savedReport.getContent());
+		assertEquals("次回は過去形を復習する。", savedReport.getNextCheck());
+		
+		// 검사 2 : 같은 일보에 관찰 기록 두 건 저장
+		List<LearningObservation> savedObservations = learningObservationMapper.findObservationsByLessonReportId(reportId, instructor.getId());
+		
+		assertEquals(2, savedObservations.size());
+		
+		LearningObservation first = savedObservations.get(0);
+		assertEquals(reportId, first.getLessonReportId());
+		assertEquals("GRAMMAR", first.getCategory());
+		assertEquals("過去形", first.getItem());
+		assertEquals("過去形を使うことができた。", first.getMemo());
+		
+		LearningObservation second = savedObservations.get(1);
+		assertEquals(reportId, second.getLessonReportId());
+		assertEquals("PRONUNCIATION", second.getCategory());
+		assertEquals("発音", second.getItem());
+		assertEquals("正しく発音できた。", second.getMemo());
+	}
+	
+	// 관찰 항목 없이 일보 등록 및 선택 입력의 빈 값 처리 확인
+	@Test
+	@Transactional
+	void registerLessonReportWithoutObservations() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 관찰 항목이 없는 빈 목록
+		List<ObservationInput> inputs = new ArrayList<>();
+		
+		// 다음 확인 사항은 공백만 입력
+		Long reportId = lessonReportService.registerLessonReport(
+				lesson.getId(),
+				instructor.getId(),
+				"会話を練習しました。",
+				"         ",
+				inputs
+			);
+		
+		assertNotNull(reportId);
+		
+		// 검사 1 : 일보는 저장되고 다음 확인 사항은 null 인지
+		LessonReport saved = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNotNull(saved);
+		assertEquals(reportId, saved.getId());
+		assertEquals("会話を練習しました。", saved.getContent());
+		assertNull(saved.getNextCheck());
+		
+		// 검사 2 : 관찰 기록은 저장되지 않는지
+		List<LearningObservation> observations = learningObservationMapper.findObservationsByLessonReportId(reportId, instructor.getId());
+		
+		assertTrue(observations.isEmpty());
+	}
+	
+	// 다른 강사의 수업일보 등록 요청을 거절하고 LessonNotFoundException 이 나오는지 확인
+	@Test
+	@Transactional
+	void rejectLessonReportRegistrationForOtherInstructor() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생과 수업 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		List<ObservationInput> inputs = new ArrayList<>();
+		
+		// 다른 강사의 id 로 일보 등록 시도
+		boolean rejected = false;
+		
+		try {
+			lessonReportService.registerLessonReport(
+					lesson.getId(),
+					otherInstructor.getId(),
+					"会話を練習しました。",
+					null,
+					inputs
+				);
+		} catch (LessonNotFoundException e) {
+			rejected = true;
+		}
+		
+		// 검사 1 : 접근 거절 예외 발생
+		assertTrue(rejected);
+		
+		// 검사 2 : 실제 담당 강사로 조회시 일보가 없는지 확인
+		LessonReport saved = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNull(saved);
+	}
+	
+	// 출석 이외의(예정, 취소, 결석) 수업 상태에서는 일보 등록 거절
+	@Test
+	@Transactional
+	void rejectLessonReportRegistrationForNonAttendedLessons() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 일보를 작성 할 수 없는 세 가지 상태
+		String[] statuses = {
+				"SCHEDULED",
+				"CANCELLED",
+				"ABSENT"
+		};
+		
+		for (String status : statuses) {
+			// 각 상태를 검사할 수업 준비
+			Lesson lesson = new Lesson(
+					student.getId(),
+					LocalDateTime.of(2026, 11, 1, 15, 30)
+				);
+			lessonMapper.insertLesson(lesson);
+			
+			lessonMapper.updateLessonStatus(
+					lesson.getId(),
+					instructor.getId(),
+					status,
+					null
+				);
+			
+			List<ObservationInput> inputs = new ArrayList<>();
+			
+			// 출석 이외의 수업에 일보 등록 시도
+			boolean rejected = false;
+			
+			try {
+				lessonReportService.registerLessonReport(
+						lesson.getId(),
+						instructor.getId(),
+						"会話を練習しました。",
+						null,
+						inputs
+					);
+			
+			} catch (IllegalArgumentException e) {
+				rejected = true;
+				
+				assertEquals("出席した授業のみ記録を作成できます。", e.getMessage());
+			}
+			
+			// 검사 1 : 해당 상태에서 등록이 거절됐는지
+			assertTrue(rejected);
+			
+			// 검사 2 : DB 에 일보가 저장되지 않았는지
+			LessonReport saved = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+			
+			assertNull(saved);
+		}
+	}
+	
+	// 같은 수업의 중복 일보 등록 거절되는지 및 기존 내용 유지되는지 확인
+	@Test
+	@Transactional
+	void rejectDuplicateLessonReportRegistration() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+			
+			List<ObservationInput> inputs = new ArrayList<>();
+		
+		// 첫 번째 일보 등록
+		Long originalId = lessonReportService.registerLessonReport(
+				lesson.getId(),
+				instructor.getId(),
+				"過去形を練習しました。",
+				"次回は過去形を復習する。",
+				inputs
+			);
+		
+		// 같은 수업에 두 번째 일보 등록 시도
+		boolean rejected = false;
+		
+		try {
+			lessonReportService.registerLessonReport(
+					lesson.getId(), 
+					instructor.getId(),
+					"会話を練習しました。", 
+					"次回は発音を練習する。", 
+					inputs
+				);
+		
+		} catch (IllegalArgumentException e) {
+			rejected = true;
+			
+			assertEquals("この授業の記録は既に登録されています。", e.getMessage());
+		}
+		
+		// 검사 1 : 중복 등록이 거절되는지
+		assertTrue(rejected);
+		
+		// 검사 2 : 기존 일보의 id 와 내용이 그대로인지 확인
+		LessonReport saved = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNotNull(saved);
+		assertEquals(originalId, saved.getId());
+		assertEquals("過去形を練習しました。", saved.getContent());
+		assertEquals("次回は過去形を復習する。", saved.getNextCheck());
+	}
+	
+	// 필수 입력값 누락시 일보 등록 거절
+	// (수업 내용, 관찰 분류, 관찰 항목, 관찰 내용)
+	@Test
+	@Transactional
+	void rejectLessonReportRegistrationWithoutRequiredValues() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// null, 빈 문자열, 공백만 있는 문자열을 각각 검사
+		String[] missingValues = {null, "", "      "};
+		
+		for (String missing : missingValues) {
+			
+			// 검사 1 : 수업 내용 누락
+			boolean contentRejected = false;
+			
+			try {
+				lessonReportService.registerLessonReport(
+						lesson.getId(),
+						instructor.getId(),
+						missing,
+						null,
+						new ArrayList<>()
+					);
+				
+			} catch (IllegalArgumentException e) {
+				contentRejected = true;
+				
+				assertEquals("授業内容を入力してください。", e.getMessage());
+			}
+			
+			assertTrue(contentRejected);
+			
+			// 검사 2 : 관찰 분류 누락
+			List<ObservationInput> inputs = new ArrayList<>();
+			
+			inputs.add(new ObservationInput(
+					missing,
+					"過去形",
+					"過去形を使うことができた。"
+				));
+			
+			boolean categoryRejected = false;
+
+			try {
+				lessonReportService.registerLessonReport(
+						lesson.getId(),
+						instructor.getId(),
+						"過去形を練習しました。",
+						null,
+						inputs
+					);
+
+			} catch (IllegalArgumentException e) {
+				categoryRejected = true;
+				assertEquals("観察の分類を選択してください。", e.getMessage());
+			}
+			
+			assertTrue(categoryRejected);
+			
+			// 검사 3 : 관찰 항목 누락
+			inputs = new ArrayList<>();
+
+			inputs.add(new ObservationInput(
+					"GRAMMAR",
+					missing,
+					"過去形を使うことができた。"
+				));
+
+			boolean itemRejected = false;
+
+			try {
+				lessonReportService.registerLessonReport(
+						lesson.getId(),
+						instructor.getId(),
+						"過去形を練習しました。",
+						null,
+						inputs
+					);
+
+			} catch (IllegalArgumentException e) {
+				itemRejected = true;
+				assertEquals("観察項目を入力してください。", e.getMessage());
+			}
+
+			assertTrue(itemRejected);
+			
+			// 검사 4 : 관찰 내용 누락
+			inputs = new ArrayList<>();
+
+			inputs.add(new ObservationInput(
+					"GRAMMAR",
+					"過去形",
+					missing
+				));
+
+			boolean memoRejected = false;
+
+			try {
+				lessonReportService.registerLessonReport(
+						lesson.getId(),
+						instructor.getId(),
+						"過去形を練習しました。",
+						null,
+						inputs
+					);
+
+			} catch (IllegalArgumentException e) {
+				memoRejected = true;
+				assertEquals("観察内容を入力してください。", e.getMessage());
+			}
+
+			assertTrue(memoRejected);
+			
+			// 전부 일보가 저장되지 않았는지 확인
+			LessonReport saved = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+
+	        assertNull(saved);
+		}
+	}
+	
+	// 정해지지 않은 학습 관찰 분류로 일보 등록 시도 시 거절되는지 Test
+	@Test
+	@Transactional
+	void rejectLessonReportRegistrationWithInvalidCategory() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 정해지지 않은 분류를 가진 학습 관찰 항목 준비
+		List<ObservationInput> inputs = new ArrayList<>();
+		
+		inputs.add(new ObservationInput(
+				"UNKNOWN",
+				"過去形",
+				"過去形を使うことができた。"
+			));
+		
+		boolean rejected = false;
+		
+		try {
+			lessonReportService.registerLessonReport(
+					lesson.getId(),
+					instructor.getId(),
+					"過去形を練習しました。",
+					null,
+					inputs
+				);
+
+		} catch (IllegalArgumentException e) {
+			rejected = true;
+
+			assertEquals(
+					"観察の分類が正しくありません。",
+					e.getMessage()
+				);
+		}
+		
+		// 검사 1 : 학습 관찰 분류가 거절됐는지 확인
+		assertTrue(rejected);
+		
+		// 검사 2 : 일보도 저장되지 않았는지 확인
+		LessonReport saved = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNull(saved);
+	}
+	
+	// 최대 길이를 넘은 내용으로 일보 등록 시 거절되는지 Test
+	@Test
+	@Transactional
+	void rejectLessonReportRegistrationWithTooLongValues() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 검사 1 : 수업 내용 2001자 등록 안되는지 확인
+		boolean contentRejected = false;
+		
+		try {
+			lessonReportService.registerLessonReport(
+					lesson.getId(),
+					instructor.getId(),
+					"잉".repeat(2001),
+					null,
+					new ArrayList<>()
+				);
+			
+		} catch ( IllegalArgumentException e) {
+			contentRejected = true;
+			
+			assertEquals("授業内容は2000文字以内で入力してください。", e.getMessage());
+		}
+		
+		assertTrue(contentRejected);
+		
+		// 검사 2 : 다음 확인 사항 1001자 등록 안되는지 확인
+		boolean nextCheckRejected = false;
+		
+		try {
+			lessonReportService.registerLessonReport(
+					lesson.getId(),
+					instructor.getId(),
+					"過去形を練習しました。",
+					"잉".repeat(1001),
+					new ArrayList<>()
+				);
+			
+		} catch (IllegalArgumentException e) {
+			nextCheckRejected = true;
+			
+			assertEquals("次回の確認事項は1000文字以内で入力してください。", e.getMessage());
+		}
+		
+		assertTrue(nextCheckRejected);
+		
+		// 검사 3 : 관찰 항목 101자 등록 안되는지 확인
+		List<ObservationInput> inputs = new ArrayList<>();
+		
+		inputs.add(new ObservationInput(
+				"GRAMMAR",
+				"잉".repeat(101),
+				"過去形を使うことができた。"
+			));
+		
+		boolean itemRejected = false;
+		
+		try {
+			lessonReportService.registerLessonReport(
+					lesson.getId(),
+					instructor.getId(),
+					"過去形を練習しました。",
+					null,
+					inputs
+				);
+			
+		} catch (IllegalArgumentException e) {
+			itemRejected = true;
+			
+			assertEquals("観察項目は100文字以内で入力してください。",e.getMessage());
+		}
+		
+		assertTrue(itemRejected);
+		
+		// 검사 4 : 관찰 내용 1001자 등록 안되는지 확인
+		inputs = new ArrayList<>();
+		
+		inputs.add(new ObservationInput(
+				"GRAMMAR",
+				"過去形",
+				"잉".repeat(1001)
+			));
+		
+		boolean memoRejected = false;
+		
+		try {
+			lessonReportService.registerLessonReport(
+					lesson.getId(),
+					instructor.getId(),
+					"過去形を練習しました。",
+					null,
+					inputs
+				);
+			
+		} catch (IllegalArgumentException e) {
+			memoRejected = true;
+			
+			assertEquals("観察内容は1000文字以内で入力してください。" ,e.getMessage());
+		}
+		
+		assertTrue(memoRejected);
+		
+		// 전부 등록 안되어 일보가 저장 안됐는지 확인
+		LessonReport saved = lessonReportMapper.findLessonReportByLessonId(lesson.getId(), instructor.getId());
+		
+		assertNull(saved);
+	}
+	
+	// Service 를 통한 일보, 관찰 기록 조회 및 다른 강사의 접근 거절 Test
+	@Test
+	@Transactional
+	void findLessonReportAndObservationsThroughServiceOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 첫 번째 강사의 학생 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 조회할 일보와 관찰 기록 준비
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"会話を練習しました。",
+				"次回も会話を練習する。"
+			);
+		lessonReportMapper.insertLessonReport(report);
+		
+		LearningObservation observation = new LearningObservation(
+				report.getId(),
+				"SPEAKING",
+				"自己紹介",
+				"自分の名前を伝えることができた。"
+			);
+		learningObservationMapper.insertLearningObservation(observation);
+		
+		// 검사 1 : 담당 강사는 해당 수업의 일보를 조회할 수 있는지 확인
+		LessonReport found = lessonReportService.findLessonReportByLessonId(
+				lesson.getId(), 
+				instructor.getId()
+			);
+		
+		assertNotNull(found);
+		assertEquals(report.getId(), found.getId());
+		assertEquals(lesson.getId(), found.getLessonId());
+		assertEquals("会話を練習しました。", found.getContent());
+		
+		// 검사 2 : 담당 강사는 일보에 연결된 관찰 기록을 조회할 수 있는지 확인
+		List<LearningObservation> observations = lessonReportService.findObservationsByLessonId(
+				lesson.getId(),
+				instructor.getId()
+			);
+		
+		assertEquals(1, observations.size());
+		assertEquals(observation.getId(), observations.get(0).getId());
+		assertEquals(report.getId(), observations.get(0).getLessonReportId());
+		
+		// 검사 3 : 다른 강사의 일보 조회는 거절되는지 확인
+		boolean reportRejected = false;
+		
+		try {
+			lessonReportService.findLessonReportByLessonId(
+					lesson.getId(),
+					otherInstructor.getId()
+				);
+			
+		} catch (LessonNotFoundException e) {
+			reportRejected = true;
+		}
+		
+		assertTrue(reportRejected);
+		
+		// 검사 4 : 다른 강사의 관찰 기록 조회도 거절되는지 확인
+		boolean observationsRejected = false;
+		
+		try {
+			lessonReportService.findObservationsByLessonId(
+					lesson.getId(),
+					otherInstructor.getId()
+				);
+			
+		} catch (LessonNotFoundException e) {
+			observationsRejected = true;
+		}
+		
+		assertTrue(observationsRejected);
+	}
+	
+	// 담당 수업이지만 아직 일보가 없는 경우 -> 일보 전용 예외 발생하는지 Test
+	@Test
+	@Transactional
+	void rejectFindingLessonReportWhenReportDoesNotExist() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업만 등록하고 일보는 작성하지 않음
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+		
+		// 검사 1 : 일보 조회 시 전용 예외 발생하는지 확인
+		boolean reportRejected = false;
+		
+		try {
+			lessonReportService.findLessonReportByLessonId(
+					lesson.getId(),
+					instructor.getId()
+				);
+			
+		} catch (LessonReportNotFoundException e) {
+			reportRejected = true;
+		}
+		
+		assertTrue(reportRejected);
+		
+		// 검사 2 : 관찰 기록 조회도 일보가 없으면 전용 예외 발생하는지 확인
+		boolean observationsRejected = false;
+		
+		try {
+			lessonReportService.findLessonReportByLessonId(
+					lesson.getId(),
+					instructor.getId()
+				);
+			
+		} catch (LessonReportNotFoundException e) {
+			observationsRejected = true;
+		}
+		
+		assertTrue(observationsRejected);
+	}
+	
+	// 일보에 관찰 기록이 없으면 빈 목록 반환 하는지 Test, 예외 발생 x
+	@Test
+	@Transactional
+	void findEmptyObservationsWhenReportHasNoObservations() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 일보만 등록하고 관찰 기록은 등록하지 않음
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"会話を練習しました。",
+				null
+			);
+		lessonReportMapper.insertLessonReport(report);
+		
+		// 관찰 기록 조회
+		List<LearningObservation> observations = lessonReportService.findObservationsByLessonId(
+				lesson.getId(),
+				instructor.getId()
+			);
+		
+		// null 이 아닌 빈 목록인지 확인
+		assertNotNull(observations);
+		assertTrue(observations.isEmpty());
+	}
+	
+	// 일보가 있는 수업은 출석 이외의 상태로 변경 거절
+	@Test
+	@Transactional
+	void rejectNonAttendedStatusWhenLessonReportExists() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				"予定どおり出席"
+			);
+		
+		// 해당 수업에 일보 등록
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"会話を練習しました。",
+				null
+			);
+		lessonReportMapper.insertLessonReport(report);
+		
+		// 변경을 거절해야 하는 출석 이외의 세 가지 상태
+		String[] statuses = {
+				"SCHEDULED",
+				"CANCELLED",
+				"ABSENT"
+		};
+		
+		for (String status : statuses) {
+			
+			// 출석 이외의 상태로 변경 시도
+			boolean rejected = false;
+			
+			try {
+				lessonService.updateLessonStatus(
+						lesson.getId(),
+						instructor.getId(),
+						status,
+						"変更されてはいけないメモ"
+					);
+				
+			} catch (IllegalArgumentException e) {
+				rejected = true;
+				
+				assertEquals("授業記録があるため、出席以外の状態には変更できません。", e.getMessage());
+			}
+
+			// 검사 1 : 상태 변경이 거절됐는지 검사
+			assertTrue(rejected);
+			
+			// 검사 2 : DB 의 상태와 메모가 그대로인지 검사
+			Lesson unchanged = lessonMapper.findLessonById(
+					lesson.getId(),
+					instructor.getId()
+				);
+			
+			assertNotNull(unchanged);
+			assertEquals("ATTENDED", unchanged.getStatus());
+			assertEquals("予定どおり出席", unchanged.getStatusMemo());
+		}
+	}
+	
+	// 일보가 있어도 출석 상태를 유지하면 상태 메모 수정 허용
+	@Test
+	@Transactional
+	void updateStatusMemoWhenLessonReportExists() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 수업 등록 및 출석 처리
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				"変更前のメモ"
+			);
+		
+		// 해당 수업에 일보 등록
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"会話を練習しました。",
+				"次回も会話を練習する。"
+			);
+		lessonReportMapper.insertLessonReport(report);
+		
+		// 출석 상태에서 상태 메모 수정
+		lessonService.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				"予定どおり出席"
+			);
+		
+		// 검사 1 : 출석 상태는 그대로, 메모는 변경됐는지
+		Lesson updated = lessonMapper.findLessonById(
+				lesson.getId(),
+				instructor.getId()
+			);
+		
+		assertNotNull(updated);
+		assertEquals("ATTENDED", updated.getStatus());
+		assertEquals("予定どおり出席", updated.getStatusMemo());
+		
+		// 검사 2 : 연결된 일보는 그대로인지
+		LessonReport unchanged = lessonReportMapper.findLessonReportByLessonId(
+				lesson.getId(),
+				instructor.getId()
+			);
+		
+		assertNotNull(unchanged);
+		assertEquals(report.getId(), unchanged.getId());
+		assertEquals("会話を練習しました。", unchanged.getContent());
+		assertEquals("次回も会話を練習する。", unchanged.getNextCheck());
+	}
+	
+	// 일보 수정과 관찰 기록 수정, 삭제, 추가
+	@Test
+	@Transactional
+	void updateLessonReportWithObservations() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		// 출석한 수업 준비
+		Lesson lesson = new Lesson(
+				student.getId(),
+				LocalDateTime.of(2026, 11, 1, 15, 30)
+			);
+		lessonMapper.insertLesson(lesson);
+
+		lessonMapper.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 일보 준비
+		LessonReport report = new LessonReport(
+				lesson.getId(),
+				"過去形を練習しました。",
+				"次回は過去形を復習する。"
+			);
+		lessonReportMapper.insertLessonReport(report);
+		
+		// 수정할 관찰 기록
+		LearningObservation grammar = new LearningObservation(
+				report.getId(),
+				"GRAMMAR",
+				"過去形",
+				"過去形を練習した。"
+			);
+		learningObservationMapper.insertLearningObservation(grammar);
+		
+		// 삭제할 관찰 기록
+		LearningObservation pronunciation = new LearningObservation(
+				report.getId(),
+				"PRONUNCIATION",
+				"発音",
+				"ゆっくり話した。"
+			);
+		learningObservationMapper.insertLearningObservation(pronunciation);
+		
+		// 수정 전 정보 확보
+		LessonReport originalReport = lessonReportMapper.findLessonReportByLessonId(
+				lesson.getId(),
+				instructor.getId()
+			);
+		assertNotNull(originalReport);
+
+		List<LearningObservation> originals = learningObservationMapper.findObservationsByLessonReportId(
+				report.getId(),
+				instructor.getId()
+			);
+		assertEquals(2, originals.size());
+
+		LearningObservation originalGrammar = originals.get(0);
+		
+		// 기존 문법 기록 수정 & 새 회화 기록 추가
+		// 발음 기록은 inputs 에 넣지 않아서 DB 에서 삭제되도록 함
+		List<ObservationUpdateInput> inputs = new ArrayList<>();
+
+		inputs.add(new ObservationUpdateInput(
+				grammar.getId(),
+				"GRAMMAR",
+				"過去形の復習",
+				"過去形を正しく使えた。"
+			));
+
+		inputs.add(new ObservationUpdateInput(
+				null,
+				"SPEAKING",
+				"自己紹介",
+				"自分の名前を伝えることができた。"
+			));
+
+		lessonReportService.updateLessonReport(
+				lesson.getId(),
+				instructor.getId(),
+				"過去形と会話を練習しました。",
+				null,
+				inputs
+			);
+		
+		// 검사 1 : 일보 내용 수정, 다음 확인 사항 삭제
+		LessonReport updatedReport = lessonReportMapper.findLessonReportByLessonId(
+				lesson.getId(),
+				instructor.getId()
+			);
+
+		assertNotNull(updatedReport);
+		assertEquals("過去形と会話を練習しました。", updatedReport.getContent());
+		assertNull(updatedReport.getNextCheck());
+		
+		// 일보의 id, 연결된 수업, 최초 작성 시각 유지
+		assertEquals(originalReport.getId(), updatedReport.getId());
+	    assertEquals(originalReport.getLessonId(), updatedReport.getLessonId());
+	    assertEquals(originalReport.getCreatedAt(), updatedReport.getCreatedAt());
+		
+		// 변경 후 관찰 기록 조회
+	    List<LearningObservation> updated = learningObservationMapper.findObservationsByLessonReportId(
+	    		report.getId(),
+	    		instructor.getId()
+	    	);
+
+	    assertEquals(2, updated.size());
+		
+		// 검사 2 : 기존 문법 기록 수정 및 id 최초 작성 시각 남겨둠
+	    LearningObservation updatedGrammar = updated.get(0);
+
+	    assertEquals(grammar.getId(), updatedGrammar.getId());
+	    assertEquals(report.getId(), updatedGrammar.getLessonReportId());
+	    assertEquals("GRAMMAR", updatedGrammar.getCategory());
+	    assertEquals("過去形の復習", updatedGrammar.getItem());
+	    assertEquals("過去形を正しく使えた。", updatedGrammar.getMemo());
+	    assertEquals(originalGrammar.getCreatedAt(),updatedGrammar.getCreatedAt());
+		
+		// 검사 3 : 새 회화 기록 등록
+	    LearningObservation added = updated.get(1);
+
+	    assertNotNull(added.getId());
+	    assertNotEquals(grammar.getId(), added.getId());
+	    assertNotEquals(pronunciation.getId(), added.getId());
+	    assertEquals(report.getId(), added.getLessonReportId());
+	    assertEquals("SPEAKING", added.getCategory());
+	    assertEquals("自己紹介", added.getItem());
+	    assertEquals("自分の名前を伝えることができた。", added.getMemo());
+		
+		// 검사 4 : DB 에서 삭제한 발음 기록이 삭제됐는지
+	    for (LearningObservation observation : updated) {
+	    	assertNotEquals(pronunciation.getId(), observation.getId());
+	    }
+	}
+	
+	// 다른 일보의 관찰 ID를 넣으면 수정 거절 및 기존 데이터 유지
+	@Test
+	@Transactional
+	void rejectObservationFromAnotherReport() {
+
+	    // 강사와 학생 준비
+	    User instructor = new User(
+	            "teacher-" + UUID.randomUUID() + "@example.com",
+	            "test-only-hash-placeholder"
+	    	);
+	    userMapper.insertUser(instructor);
+
+	    Student student = new Student(
+	            instructor.getId(),
+	            "山田太郎",
+	            null,
+	            null,
+	            null
+	    	);
+	    studentMapper.insertStudent(student);
+
+	    // 수업 두 건 준비
+	    Lesson lessonA = new Lesson(
+	            student.getId(),
+	            LocalDateTime.of(2026, 11, 1, 15, 30)
+	    	);
+	    lessonMapper.insertLesson(lessonA);
+
+	    Lesson lessonB = new Lesson(
+	            student.getId(),
+	            LocalDateTime.of(2026, 11, 2, 15, 30)
+	    	);
+	    lessonMapper.insertLesson(lessonB);
+
+	    lessonMapper.updateLessonStatus(
+	    		lessonA.getId(),
+	    		instructor.getId(),
+	    		"ATTENDED",
+	    		null
+	    	);
+	    lessonMapper.updateLessonStatus(
+	    		lessonB.getId(),
+	    		instructor.getId(),
+	    		"ATTENDED",
+	    		null
+	    	);
+
+	    // 일보 두 건 준비
+	    LessonReport reportA = new LessonReport(
+	            lessonA.getId(),
+	            "過去形を練習しました。",
+	            "次回は復習する。"
+	    	);
+	    lessonReportMapper.insertLessonReport(reportA);
+
+	    LessonReport reportB = new LessonReport(
+	            lessonB.getId(),
+	            "会話を練習しました。",
+	            null
+	    	);
+	    lessonReportMapper.insertLessonReport(reportB);
+
+	    // 각 일보에 관찰 기록 한 건씩 준비
+	    LearningObservation observationA = new LearningObservation(
+	            reportA.getId(),
+	            "GRAMMAR",
+	            "過去形",
+	            "過去形を使えた。"
+	    	);
+	    learningObservationMapper.insertLearningObservation(observationA);
+
+	    LearningObservation observationB = new LearningObservation(
+	            reportB.getId(),
+	            "SPEAKING",
+	            "自己紹介",
+	            "自分の名前を伝えた。"
+	    	);
+	    learningObservationMapper.insertLearningObservation(observationB);
+
+	    // report A 를 수정하면서 report B 의 관찰 id 를 전달
+	    List<ObservationUpdateInput> inputs = new ArrayList<>();
+
+	    inputs.add(new ObservationUpdateInput(
+	            observationB.getId(),
+	            "OTHER",
+	            "変更後の項目",
+	            "変更されてはいけない内容"
+	    	));
+
+	    boolean rejected = false;
+
+	    try {
+	        lessonReportService.updateLessonReport(
+	                lessonA.getId(),
+	                instructor.getId(),
+	                "変更されてはいけない授業内容",
+	                null,
+	                inputs
+	        	);
+
+	    } catch (IllegalArgumentException e) {
+	        rejected = true;
+	        assertEquals("観察項目が正しくありません。", e.getMessage());
+	    }
+
+	    // 검사 1 : 잘못된 관찰 id 를 포함한 요청 거절
+	    assertTrue(rejected);
+
+	    // 검사 2 : 수정 대상인 report A 의 내용 유지
+	    LessonReport unchangedReport = lessonReportMapper.findLessonReportByLessonId(
+	    		lessonA.getId(),
+	    		instructor.getId()
+	    	);
+
+	    assertNotNull(unchangedReport);
+	    assertEquals("過去形を練習しました。", unchangedReport.getContent());
+	    assertEquals("次回は復習する。", unchangedReport.getNextCheck());
+
+	    // 검사 3 : 입력 목록에서 빠진 report A 의 관찰 기록도 삭제되지 않음
+	    List<LearningObservation> unchangedA = learningObservationMapper.findObservationsByLessonReportId(
+	    		reportA.getId(),
+	    		instructor.getId()
+	    	);
+
+	    assertEquals(1, unchangedA.size());
+	    assertEquals(observationA.getId(), unchangedA.get(0).getId());
+	    assertEquals("GRAMMAR", unchangedA.get(0).getCategory());
+	    assertEquals("過去形", unchangedA.get(0).getItem());
+	    assertEquals("過去形を使えた。", unchangedA.get(0).getMemo());
+
+	    // 검사 4 : 잘못 전달한 report B 의 관찰 기록도 변경되지 않음
+	    List<LearningObservation> unchangedB = learningObservationMapper.findObservationsByLessonReportId(
+	    		reportB.getId(),
+	    		instructor.getId()
+	    	);
+
+	    assertEquals(1, unchangedB.size());
+	    assertEquals(observationB.getId(), unchangedB.get(0).getId());
+	    assertEquals(reportB.getId(), unchangedB.get(0).getLessonReportId());
+	    assertEquals("SPEAKING", unchangedB.get(0).getCategory());
+	    assertEquals("自己紹介", unchangedB.get(0).getItem());
+	    assertEquals("自分の名前を伝えた。", unchangedB.get(0).getMemo());
+	}
+	
+	// 다른 강사의 일보 수정 요청 거절 및 기존 데이터 유지
+	@Test
+	@Transactional
+	void rejectLessonReportUpdateByOtherInstructor() {
+
+	    // 강사 두 명 준비
+	    User instructor = new User(
+	            "teacher-" + UUID.randomUUID() + "@example.com",
+	            "test-only-hash-placeholder"
+	    	);
+	    userMapper.insertUser(instructor);
+
+	    User otherInstructor = new User(
+	            "other-" + UUID.randomUUID() + "@example.com",
+	            "test-only-hash-placeholder"
+	    	);
+	    userMapper.insertUser(otherInstructor);
+
+	    // 첫 번째 강사의 학생 준비
+	    Student student = new Student(
+	            instructor.getId(),
+	            "山田太郎",
+	            null,
+	            null,
+	            null
+	    	);
+	    studentMapper.insertStudent(student);
+
+	    // 출석한 수업 준비
+	    Lesson lesson = new Lesson(
+	            student.getId(),
+	            LocalDateTime.of(2026, 11, 1, 15, 30)
+	    	);
+	    lessonMapper.insertLesson(lesson);
+
+	    lessonMapper.updateLessonStatus(
+	            lesson.getId(),
+	            instructor.getId(),
+	            "ATTENDED",
+	            null
+	    	);
+
+	    // 기존 일보와 관찰 기록 준비
+	    LessonReport report = new LessonReport(
+	            lesson.getId(),
+	            "過去形を練習しました。",
+	            "次回は復習する。"
+	    	);
+	    lessonReportMapper.insertLessonReport(report);
+
+	    LearningObservation observation = new LearningObservation(
+	            report.getId(),
+	            "GRAMMAR",
+	            "過去形",
+	            "過去形を使えた。"
+	    	);
+	    learningObservationMapper.insertLearningObservation(observation);
+
+	    // 빈 목록은 기존 관찰 기록을 전부 삭제하라는 요청
+	    List<ObservationUpdateInput> inputs = new ArrayList<>();
+
+	    // 다른 강사의 ID로 일보 수정 및 관찰 기록 삭제 시도
+	    boolean rejected = false;
+
+	    try {
+	        lessonReportService.updateLessonReport(
+	                lesson.getId(),
+	                otherInstructor.getId(),
+	                "変更されてはいけない授業内容",
+	                null,
+	                inputs
+	        );
+
+	    } catch (LessonNotFoundException e) {
+	        rejected = true;
+	    }
+
+	    // 검사 1 : 다른 강사의 수정 요청 거절
+	    assertTrue(rejected);
+
+	    // 검사 2 : 소유 강사로 조회하여 일보 내용이 그대로인지 확인
+	    LessonReport unchangedReport =
+	            lessonReportMapper.findLessonReportByLessonId(
+	                    lesson.getId(),
+	                    instructor.getId()
+	            );
+
+	    assertNotNull(unchangedReport);
+	    assertEquals(report.getId(), unchangedReport.getId());
+	    assertEquals("過去形を練習しました。", unchangedReport.getContent());
+	    assertEquals("次回は復習する。", unchangedReport.getNextCheck());
+
+	    // 검사 3 : 기존 관찰 기록도 삭제되지 않고 유지되는지 확인
+	    List<LearningObservation> unchangedObservations =
+	            learningObservationMapper.findObservationsByLessonReportId(
+	                    report.getId(),
+	                    instructor.getId()
+	            );
+
+	    assertEquals(1, unchangedObservations.size());
+
+	    LearningObservation unchanged = unchangedObservations.get(0);
+
+	    assertEquals(observation.getId(), unchanged.getId());
+	    assertEquals(report.getId(), unchanged.getLessonReportId());
+	    assertEquals("GRAMMAR", unchanged.getCategory());
+	    assertEquals("過去形", unchanged.getItem());
+	    assertEquals("過去形を使えた。", unchanged.getMemo());
 	}
 	
 }

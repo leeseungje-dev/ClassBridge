@@ -55,6 +55,25 @@
                         <a th:href="@{/lessons/{id}/status(id=${lesson.id})}">
                             状態を変更する
                         </a>
+
+                        <!-- 일보가 있으면 상세 화면으로 이동 -->
+                        <a th:if="${lesson.lessonReportId != null}"
+                            th:href="@{/lessons/{lessonId}/report(lessonId=${lesson.id})}">
+                            授業記録を見る
+                        </a>
+
+                        <!-- 일보가 없고 출석 상태이면 작성 화면으로 이동 -->
+                        <a th:if="${lesson.lessonReportId == null
+                            and lesson.status == 'ATTENDED'}"
+                            th:href="@{/lessons/{lessonId}/report/new(lessonId=${lesson.id})}">
+                            授業記録を作成する
+                        </a>
+
+                        <!-- 일보가 없고 출석 이외의 상태이면 작성 조건 안내 -->
+                        <span th:if="${lesson.lessonReportId == null
+                            and lesson.status != 'ATTENDED'}">
+                            授業記録は出席した授業のみ作成できます。
+                        </span>
                     </td>
                 </tr>
             </tbody>

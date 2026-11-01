@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>授業記録の処理ができません | ClassBridge</title>
+    </head>
+    <body>
+        <h1>授業記録の処理ができません。</h1>
+
+        <p th:text="${errorMessage}"></p>
+
+        <a th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
+            授業一覧へ戻る
+        </a>
+    </body>
+</html>

@@ -7,12 +7,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.classbridge.student.StudentService;
+import com.classbridge.report.LessonReport;
+import com.classbridge.report.LessonReportMapper;
 
 /*
  * 수업 관리 업무처리
  * 로그인한 강사의 학생인지 확인하고 Mapper 호출
  * author : LEE SEUNGJE
- * date : 2026.10.27 ~ 2026.10.28
+ * date : 2026.10.27 ~ 2026.11.01
  */
 
 @Service
@@ -21,11 +23,13 @@ public class LessonService {
 	// field
 	private final LessonMapper lessonMapper;
 	private final StudentService studentService;
+	private final LessonReportMapper lessonReportMapper;
 	
 	// constructor
-	public LessonService(LessonMapper lessonMapper, StudentService studentService) {
+	public LessonService(LessonMapper lessonMapper, StudentService studentService, LessonReportMapper lessonReportMapper) {
 		this.lessonMapper = lessonMapper;
 		this.studentService = studentService;
+		this.lessonReportMapper = lessonReportMapper;
 	}
 	
 	// method
@@ -115,6 +119,15 @@ public class LessonService {
 				&& !status.equals("ABSENT")
 		) {
 			throw new IllegalArgumentException("授業の状態が正しくありません。");
+		}
+		
+		// 출석 이외의 상태로 변경하려는 경우, 작성된 일보가 있는지 확인
+		if (!"ATTENDED".equals(status)) {
+			LessonReport report = lessonReportMapper.findLessonReportByLessonId(id, instructorId);
+			
+			if(report != null) {
+				throw new IllegalArgumentException("授業記録があるため、出席以外の状態には変更できません。");
+			}
 		}
 		
 		// 선택 입력인 메모의 앞뒤 공백 확인

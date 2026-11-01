@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>授業記録 | ClassBridge</title>
+    </head>
+    <body>
+        <h1>授業記録</h1>
+
+        <p th:text="|学生名：${student.name}|"></p>
+
+        <p th:text="|授業日時：${#temporals.format(
+                lesson.lessonAt, 'yyyy/MM/dd HH:mm'
+            )}|">
+        </p>
+
+        <div>
+            <h2>授業内容</h2>
+            <p th:text="${report.content}"
+                style="white-space: pre-wrap;">
+            </p>
+        </div>
+
+        <div>
+            <h2>学習観察記録</h2>
+
+            <p th:if="${#lists.isEmpty(observations)}">
+                観察記録はまだ登録されていません。
+            </p>
+
+            <table th:if="${!#lists.isEmpty(observations)}">
+                <thead>
+                    <tr>
+                        <th>分類</th>
+                        <th>項目</th>
+                        <th>観察内容</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr th:each="observation : ${observations}">
+                        <td th:switch="${observation.category}">
+                            <span th:case="GRAMMAR">文法</span>
+                            <span th:case="EXPRESSION">表現</span>
+                            <span th:case="PRONUNCIATION">発音</span>
+                            <span th:case="SPEAKING">会話</span>
+                            <span th:case="LISTENING">聞き取り</span>
+                            <span th:case="OTHER">その他</span>
+                            <span th:case="*">不明</span>
+                        </td>
+
+                        <td th:text="${observation.item}">                            
+                        </td>
+
+                        <td th:text="${observation.memo}"
+                            style="white-space: pre-wrap;">
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div>
+            <h2>次回の確認事項</h2>
+
+            <p th:if="${report.nextCheck != null}"
+                th:text="${report.nextCheck}"
+                style="white-space: pre-wrap;">
+            </p>
+
+            <p th:if="${report.nextCheck == null}">
+                次回の確認事項はありません。
+            </p>
+        </div>
+
+        <div>
+            <h2>記録日時</h2>
+
+            <p th:text="|作成日時：${#temporals.format(
+                    report.createdAt, 'yyyy/MM/dd HH:mm'
+                )}|">
+            </p>
+
+            <p th:text="|更新日時：${#temporals.format(
+                    report.updatedAt, 'yyyy/MM/dd HH:mm'
+                )}|">
+            </p>
+        </div>
+
+        <p>
+            <a th:href="@{/lessons/{lessonId}/report/edit(lessonId=${lesson.id})}">
+                授業記録を編集する
+            </a>
+        </p>
+
+        <p>
+            <a th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
+                授業一覧へ戻る
+            </a>
+        </p>
+
+        <p>
+            <a th:href="@{/students/{id}(id=${student.id})}">
+                学生詳細へ戻る
+            </a>
+        </p>
+    </body>
+</html>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.classbridge.observation.LearningObservationMapper">
+	
+	<!-- DB column 과 Java field 연결 -->
+	<resultMap id="learningObservationResultMap"
+			type="com.classbridge.observation.LearningObservation">
+		
+		<id property="id" column="ID"/>
+		<result property="lessonReportId" column="LESSON_REPORT_ID"/>
+		<result property="category" column="CATEGORY"/>
+		<result property="item" column="ITEM"/>
+		<result property="memo" column="MEMO"/>
+		<result property="createdAt" column="CREATED_AT"/>
+		<result property="updatedAt" column="UPDATED_AT"/>
+	</resultMap>
+	
+	<!-- 관찰 기록 한 건 등록 -->
+	<insert id="insertLearningObservation"
+			parameterType="com.classbridge.observation.LearningObservation">
+
+		<selectKey keyProperty="id"
+				resultType="java.lang.Long"
+				order="BEFORE">
+			SELECT LEARNING_OBSERVATIONS_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+
+		INSERT INTO LEARNING_OBSERVATIONS (
+			ID,
+			LESSON_REPORT_ID,
+			CATEGORY,
+			ITEM,
+			MEMO
+		)
+		VALUES (
+			#{id},
+			#{lessonReportId},
+			#{category},
+			#{item},
+			#{memo}
+		)
+	</insert>
+	
+	<!-- 수업일보의 관찰 기록 조회 및 담당 강사 확인 -->
+	<select id="findObservationsByLessonReportId"
+			resultMap="learningObservationResultMap">
+		SELECT
+			O.ID,
+			O.LESSON_REPORT_ID,
+			O.CATEGORY,
+			O.ITEM,
+			O.MEMO,
+			O.CREATED_AT,
+			O.UPDATED_AT
+		FROM LEARNING_OBSERVATIONS O
+		INNER JOIN LESSON_REPORTS R
+			ON O.LESSON_REPORT_ID = R.ID
+		INNER JOIN LESSONS L
+			ON R.LESSON_ID = L.ID
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		WHERE O.LESSON_REPORT_ID = #{lessonReportId}
+			AND S.INSTRUCTOR_ID = #{instructorId}
+		ORDER BY O.ID ASC
+	</select>
+	
+	<!-- 관찰 기록 수정 및 해당 일보, 담당 강사 확인 -->
+	<update id="updateLearningObservation">
+		UPDATE LEARNING_OBSERVATIONS
+		SET
+			CATEGORY = #{observation.category},
+			ITEM = #{observation.item},
+			MEMO = #{observation.memo},
+			UPDATED_AT = CURRENT_DATE
+		WHERE ID = #{observation.id}
+			AND LESSON_REPORT_ID = #{lessonReportId}
+			AND LESSON_REPORT_ID IN (
+				SELECT R.ID
+				FROM LESSON_REPORTS R
+				INNER JOIN LESSONS L
+					ON R.LESSON_ID = L.ID
+				INNER JOIN STUDENTS S
+					ON L.STUDENT_ID = S.ID
+				WHERE S.INSTRUCTOR_ID = #{instructorId}
+			)
+	</update>
+	
+	<!-- 관찰 기록 삭제 및 해당 일보, 담당 강사 확인 -->
+	<delete id="deleteLearningObservation">
+		DELETE FROM LEARNING_OBSERVATIONS
+		WHERE ID = #{id}
+			AND LESSON_REPORT_ID = #{lessonReportId}
+			AND LESSON_REPORT_ID IN (
+				SELECT R.ID
+				FROM LESSON_REPORTS R
+				INNER JOIN LESSONS L
+					ON R.LESSON_ID = L.ID
+				INNER JOIN STUDENTS S
+					ON L.STUDENT_ID = S.ID
+				WHERE S.INSTRUCTOR_ID = #{instructorId}
+			)
+	</delete>
+	
+</mapper>

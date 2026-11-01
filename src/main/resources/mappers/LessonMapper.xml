@@ -55,10 +55,13 @@
 			L.LESSON_AT AS "lessonAt",
 			L.STATUS,
 			L.STATUS_MEMO AS "statusMemo",
-			L.CREATED_AT AS "createdAt"
+			L.CREATED_AT AS "createdAt",
+			R.ID AS "lessonReportId"
 		FROM LESSONS L
 		INNER JOIN STUDENTS S
 			ON L.STUDENT_ID = S.ID
+		LEFT JOIN LESSON_REPORTS R
+			ON R.LESSON_ID = L.ID
 		WHERE L.STUDENT_ID = #{studentId}
 			AND S.INSTRUCTOR_ID = #{instructorId}
 		ORDER BY L.LESSON_AT ASC, L.ID ASC

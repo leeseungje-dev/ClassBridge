@@ -19,6 +19,7 @@ public class Lesson {
 	private String status;
 	private String statusMemo;
 	private LocalDateTime createdAt;
+	private Long lessonReportId;
 	
 	// constructor
 	// 조회 결과를 객체로 만들 때 사용

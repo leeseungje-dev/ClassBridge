@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.classbridge.report.LessonReportMapper">
+	
+	<!-- DB column 과 Java field 연결 -->
+	<resultMap id="lessonReportResultMap"
+			type="com.classbridge.report.LessonReport">
+		<id property="id" column="ID"/>
+		<result property="lessonId" column="LESSON_ID"/>
+		<result property="content" column="CONTENT"/>
+		<result property="nextCheck" column="NEXT_CHECK"/>
+		<result property="createdAt" column="CREATED_AT"/>
+		<result property="updatedAt" column="UPDATED_AT"/>
+	</resultMap>
+	
+	<!-- 수업 일보 DB 등록 -->
+	<insert id="insertLessonReport"
+			parameterType="com.classbridge.report.LessonReport">
+		
+		<selectKey keyProperty="id"
+				resultType="java.lang.Long"
+				order="BEFORE">
+			SELECT LESSON_REPORTS_SEQ.NEXTVAL
+			FROM DUAL
+		</selectKey>
+		
+		INSERT INTO LESSON_REPORTS (
+			ID,
+			LESSON_ID,
+			CONTENT,
+			NEXT_CHECK
+		)
+		VALUES (
+			#{id},
+			#{lessonId},
+			#{content},
+			#{nextCheck, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<!-- 수업 id 로 일보 조회 및 담당 강사 확인 -->
+	<select id="findLessonReportByLessonId"
+			resultMap="lessonReportResultMap">
+		
+		SELECT
+			R.ID,
+			R.LESSON_ID,
+			R.CONTENT,
+			R.NEXT_CHECK,
+			R.CREATED_AT,
+			R.UPDATED_AT
+		FROM LESSON_REPORTS R
+		INNER JOIN LESSONS L
+			ON R.LESSON_ID = L.ID
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		WHERE R.LESSON_ID = #{lessonId}
+			AND S.INSTRUCTOR_ID = #{instructorId}
+	</select>
+	
+	<!-- 수업일보 수정 및 소유 강사 확인 -->
+	<update id="updateLessonReport">
+		UPDATE LESSON_REPORTS
+		SET
+			CONTENT = #{report.content},
+			NEXT_CHECK = #{report.nextCheck, jdbcType=VARCHAR},
+			UPDATED_AT = CURRENT_DATE
+		WHERE ID = #{report.id}
+			AND LESSON_ID IN (
+				SELECT L.ID
+				FROM LESSONS L
+				INNER JOIN STUDENTS S
+					ON L.STUDENT_ID = S.ID
+				WHERE S.INSTRUCTOR_ID = #{instructorId}
+			)
+	</update>
+	
+</mapper>
