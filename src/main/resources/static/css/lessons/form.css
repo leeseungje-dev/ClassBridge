@@ -1,0 +1,85 @@
+/* 학생 이름과 수업 정보 */
+.lesson-form-info {
+    margin-bottom: 24px;
+    color: #555555;
+}
+
+/* 입력 영역 */
+.lesson-form {
+    max-width: 640px;
+}
+
+.lesson-form > div {
+    margin-bottom: 24px;
+}
+
+/* 입력란 제목 */
+.lesson-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+/* 입력란 모양 */
+.lesson-form input,
+.lesson-form select,
+.lesson-form textarea {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #aaaaaa;
+    border-radius: 0;
+    background-color: #ffffff;
+    color: #222222;
+    font: inherit;
+}
+
+/* 날짜·시간과 상태 선택란의 너비 */
+.lesson-form input[type="datetime-local"],
+.lesson-form select {
+    max-width: 320px;
+}
+
+/* 상태 메모 */
+.lesson-form textarea {
+    min-height: 140px;
+    resize: vertical;
+}
+
+/* 입력 안내 */
+.lesson-form-note {
+    margin: 16px 0 24px;
+    color: #666666;
+    font-size: 14px;
+}
+
+/* 등록·저장 버튼은 청록색으로 채움 */
+.lesson-form button {
+    padding: 10px 24px;
+    border: 1px solid #326b68;
+    border-radius: 0;
+    background-color: #326b68;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.lesson-form button:hover {
+    border-color: #285754;
+    background-color: #285754;
+}
+
+/* 입력 오류 안내 */
+.lesson-form-error {
+    padding: 12px 16px;
+    border-left: 3px solid #b45b5b;
+    background-color: #fff3f3;
+    color: #974444;
+    font-weight: 600;
+}
+
+/* 돌아가기 링크는 오른쪽에 배치 */
+.lesson-form-back {
+    margin-top: 24px;
+    text-align: right;
+}

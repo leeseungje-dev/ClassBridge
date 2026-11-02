@@ -1,0 +1,83 @@
+/* 학생 등록 링크를 표와 떨어뜨려 배치 */
+.student-list-actions {
+    margin: 0 0 24px;
+}
+
+/* 학생 등록 화면으로 이동하는 링크 */
+.student-list-actions a {
+    display: inline-block;
+    padding: 10px 16px;
+    border: 1px solid #326b68;
+    border-radius: 0;
+    background-color: #ffffff;
+    color: #326b68;
+    text-decoration: none;
+}
+
+.student-list-actions a:hover {
+    background-color: #eef5f4;
+}
+
+/* 좁은 화면에서는 표 영역만 가로 스크롤 */
+.student-table-wrapper {
+    overflow-x: auto;
+}
+
+/* 학생 목록 표 */
+.student-table {
+    width: 100%;
+    min-width: 480px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+/* 제목 셀과 데이터 셀의 여백 */
+.student-table th,
+.student-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #dddddd;
+    overflow-wrap: anywhere;
+}
+
+/* 표 제목 행 */
+.student-table th {
+    background-color: #f3f3f3;
+    font-weight: 600;
+}
+
+/* 마우스를 올린 행을 구분 */
+.student-table tbody tr:hover {
+    background-color: #f8f8f8;
+}
+
+/* 학생이 없을 때 안내 */
+.student-list-empty {
+    padding: 24px;
+    border: 1px dashed #cccccc;
+    color: #555555;
+}
+
+/* 목록 아래 돌아가기 링크 */
+.student-list-back {
+    margin-top: 24px;
+}
+
+/* 목록 아래: 등록은 왼쪽, 돌아가기는 오른쪽 */
+.student-list-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.student-list-footer .student-list-actions,
+.student-list-footer .student-list-back {
+    margin: 0;
+}
+
+.student-list-footer .student-list-back {
+    margin-left: auto;
+    text-align: right;
+}

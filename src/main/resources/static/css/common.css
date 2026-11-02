@@ -1,0 +1,44 @@
+/* 테두리와 안쪽 여백을 요소의 너비에 포함 */
+* {box-sizing: border-box;}
+
+/* 전체 화면의 기본 글꼴과 간격 */
+body {
+    margin: 0;
+    padding: 32px 24px;
+    background-color: #ffffff;
+    color: #222222;;
+    font-family: "Yu Gothic", "Meiryo", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+/* 화면 내용을 담는 영역 */
+.page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}
+
+/* 화면 제목 */
+h1 {
+    margin: 0 0 24px;
+    font-size: 28px;
+}
+
+/* 작은 제목 */
+h2 {
+    margin: 24 0 12px;
+    font-size: 20px;
+}
+
+/* 링크도 기본 글자색으로 표시 */
+a {
+    color: inherit;
+    text-underline-offset: 4px;
+}
+
+/* 키보드로 이동할 때 선택된 위치 표시 */
+:focus-visible {
+    outline: 2px solid #333333;
+    outline-offset: 3px;
+}

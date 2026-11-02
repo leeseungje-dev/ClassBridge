@@ -1,45 +1,51 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <title>授業の状態変更 | ClassBridge</title>
-    </head>
-    <body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>授業の状態変更 | ClassBridge</title>
+
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/lessons/form.css}">
+</head>
+
+<body>
+    <main class="page">
         <h1>授業の状態変更</h1>
 
-        <p th:text="|学生名：${student.name}|"></p>
-
-        <p th:text="|授業日時：${#temporals.format(
-            lesson.lessonAt, 'yyyy/MM/dd HH:mm'
-        )}|">
+        <p class="lesson-form-info"
+            th:text="|学生名：${student.name}|">
         </p>
 
-        <p th:if="${errorMessage != null}"
+        <p class="lesson-form-info"
+            th:text="|授業日時：${#temporals.format(
+                lesson.lessonAt, 'yyyy/MM/dd HH:mm'
+            )}|">
+        </p>
+
+        <p class="lesson-form-error" 
+            th:if="${errorMessage != null}" 
             th:text="${errorMessage}">
         </p>
 
-        <form th:action="@{/lessons/{id}/status(id=${lesson.id})}"
+        <form class="lesson-form" 
+            th:action="@{/lessons/{id}/status(id=${lesson.id})}" 
             method="post">
             <div>
                 <label for="status">状態（必須）：&nbsp;</label>
 
-                <select id="status"
-                    name="status"
-                    required>
-                    <option value="SCHEDULED"
-                        th:selected="${status == 'SCHEDULED'}">
+                <select id="status" name="status" required>
+                    <option value="SCHEDULED" th:selected="${status == 'SCHEDULED'}">
                         予定
                     </option>
-                    <option value="ATTENDED"
-                        th:selected="${status == 'ATTENDED'}">
+                    <option value="ATTENDED" th:selected="${status == 'ATTENDED'}">
                         出席
                     </option>
-                    <option value="CANCELLED"
-                        th:selected="${status == 'CANCELLED'}">
+                    <option value="CANCELLED" th:selected="${status == 'CANCELLED'}">
                         キャンセル
                     </option>
-                    <option value="ABSENT"
-                        th:selected="${status == 'ABSENT'}">
+                    <option value="ABSENT" th:selected="${status == 'ABSENT'}">
                         欠席
                     </option>
                 </select>
@@ -48,11 +54,7 @@
             <div>
                 <label for="statusMemo">状態メモ ：&nbsp;</label>
 
-                <textarea
-                    id="statusMemo"
-                    name="statusMemo"
-                    rows="5"
-                    th:text="${statusMemo}"
+                <textarea id="statusMemo" name="statusMemo" rows="5" th:text="${statusMemo}"
                     placeholder="例）体調不良のためキャンセル">
                 </textarea>
             </div>
@@ -60,10 +62,12 @@
             <button type="submit">保存する</button>
         </form>
 
-        <p>
+        <p class="lesson-form-back">
             <a th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
                 授業一覧へ戻る
             </a>
         </p>
-    </body>
+    </main>
+</body>
+
 </html>

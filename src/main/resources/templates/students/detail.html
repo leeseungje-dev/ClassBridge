@@ -1,53 +1,103 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <title>学生詳細 | ClassBridge</title>
-    </head>
-    <body>
-        <h1>学生詳細</h1>
 
-        <div>
-            <h2>学生名</h2>
-            <p th:text="${student.name}"></p>
-        </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>学生詳細 | ClassBridge</title>
 
-        <div>
-            <h2>学習開始日</h2>
-            <p th:text="${student.learningStartDate}"></p>
-        </div>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/students/detail.css}">
+</head>
 
-        <div>
-            <h2>学習レベル</h2>
-            <p th:text="${student.currentLevel}"></p>
-        </div>
+<body>
+    <main class="page">
+        <!-- 화면 제목과 주요 이동 링크 -->
+        <div class="student-header">
+            <h1>学生詳細</h1>
 
-        <div>
-            <h2>講師メモ</h2>
-            <!-- 메모 입력시 넣은 줄바꿈과 공백을 화면에서 유지해줌 -->
-            <p th:text="${student.instructorMemo}"
-                style="white-space: pre-wrap;"></p>
-        </div>
-
-        <p>
-            <a th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
+            <a class="student-lessons-link"
+                th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
                 授業一覧を見る
             </a>
-        </p>
+        </div>
 
-        <p>
-            <a th:href="@{/students/{id}/edit(id=${student.id})}">
+        <!-- 기존 학생 정보 -->
+        <section class="student-info">
+            <div>
+                <h2>学生名</h2>
+                <p th:text="${student.name}"></p>
+            </div>
+
+            <div>
+                <h2>学習開始日</h2>
+                <p th:text="${student.learningStartDate}"></p>
+            </div>
+
+            <div>
+                <h2>学習レベル</h2>
+                <p th:text="${student.currentLevel}"></p>
+            </div>
+
+            <div class="student-memo">
+                <h2>講師メモ</h2>
+                <!-- 메모 입력시 넣은 줄바꿈과 공백을 화면에서 유지해줌 -->
+                <p th:text="${student.instructorMemo}"></p>
+            </div>
+        </section>
+
+        <!-- 기존 기능으로 이동 -->
+        <nav class="student-actions" aria-label="学生の管理">
+
+            <a class="student-edit" 
+                th:href="@{/students/{id}/edit(id=${student.id})}">
                 学生情報を編集する
             </a>
+        </nav>
+
+        <!-- 앞으로 데이터를 연결할 영역 -->
+        <section class="student-overview">
+            <h2>次の授業に向けて</h2>
+
+            <div class="overview-grid">
+                <section class="overview-card">
+                    <h3>次回の予定授業</h3>
+                    <span class="preparing-label">
+                        準備中
+                    </span>
+                    <p>次回の授業日時を表示する予定です。</p>
+                </section>
+
+                <section class="overview-card">
+                    <h3>次回の確認事項</h3>
+                    <span class="preparing-label">
+                        準備中
+                    </span>
+                    <p>直近の授業記録から確認事項を表示する予定です。</p>
+                </section>
+
+                <section class="overview-card">
+                    <h3>学習観察の履歴</h3>
+                    <span class="preparing-label">準備中</span>
+                    <p>これまでの観察記録を確認できるようにする予定です。</p>
+                </section>
+            </div>
+        </section>
+
+        <!-- 삭제는 다른 작업과 구분하여 배치 -->
+        <div class="student-delete">
+            <form th:action="@{/students/{id}/delete(id=${student.id})}"
+                method="post"
+                onsubmit="return confirm('この学生を削除しますか？');">
+                
+                <button type="submit">学生を削除する</button>
+            </form>
+        </div>
+
+        <p class="student-back">
+            <a th:href="@{/students}">学生一覧へ戻る</a>
         </p>
+    </main>
+</body>
 
-        <form
-            th:action="@{/students/{id}/delete(id=${student.id})}"
-            method="post"
-            onsubmit="return confirm('この学生を削除しますか？');">
-            <button type="submit">学生を削除する</button>
-        </form>
-
-        <a th:href="@{/students}">学生一覧へ戻る</a>
-    </body>
 </html>

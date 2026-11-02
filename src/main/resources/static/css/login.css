@@ -1,0 +1,65 @@
+/* 로그인 입력 영역 */
+.login-form {
+    max-width: 480px;
+}
+
+.login-form > div {
+    margin-bottom: 24px;
+}
+
+/* 입력란 제목 */
+.login-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+/* 이메일과 비밀번호 입력 칸 */
+.login-form input:not([type="hidden"]) {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #aaaaaa;
+    border-radius: 0;
+    background-color: #ffffff;
+    color: #222222;
+    font: inherit;
+}
+
+/* 로그인 버튼 */
+.login-form button {
+    padding: 10px 24px;
+    border: 1px solid #326b68;
+    border-radius: 0;
+    background-color: #326b68;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.login-form button:hover {
+    border-color: #285754;
+    background-color: #285754;
+}
+
+/* 로그인 실패 안내 */
+.login-error {
+    padding: 12px 16px;
+    border-left: 3px solid #b45b5b;
+    background-color: #fff3f3;
+    color: #974444;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* 회원가입 안내 */
+.login-signup {
+    margin-top: 24px;
+    color: #555555;
+}
+
+/* 홈으로 돌아가는 링크는 아래 오른쪽 */
+.login-back {
+    margin-top: 24px;
+    text-align: right;
+}

@@ -1,40 +1,82 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <title>ClassBridge</title>
-    </head>
-    <body>
-        <h1>ClassBridge</h1>
-        <p th:text="${message}">
-			기본 안내 문구
-		</p>
-		
-		<a th:if="${loginEmail == null}"
-			th:href="@{/login}">ログイン
-		</a>
-			
-		<a th:if="${loginEmail == null}"
-			th:href="@{/signup}">新規登録
-		</a>
-		
-		<p th:if="${loginEmail != null}"
-			th:text="|ログイン中：${loginEmail}|">
-		</p>
-		
-		<p th:if="${loginEmail !=null}">
-			<a th:href="@{/students}">学生一覧へ</a>
-		</p>
 
-		<a th:if="${loginEmail != null}" 
-			th:href="@{/students/new}">
-			学生を登録する
-		</a>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ClassBridge</title>
 
-		<form th:if="${loginEmail != null}"
-			th:action="@{/logout}"
-			method="post">
-			<button type="submit">ログアウト</button>
-		</form>
-    </body>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/home.css}">
+</head>
+
+<body>
+    <main class="page">
+        <!-- 서비스 소개 -->
+        <header class="home-header">
+            <h1>ClassBridge</h1>
+
+            <p class="home-description">
+                個人の語学講師のための [学生/授業記録] 管理
+            </p>
+        </header>
+
+        <!-- Controller에서 전달한 안내 문구 -->
+        <p class="home-message" th:text="${message}">
+            ClassBridgeへようこそ。
+        </p>
+
+        <!-- 로그인하지 않은 사용자 -->
+        <section class="home-section" th:if="${loginEmail == null}">
+            <h2>利用を始める</h2>
+
+            <p>
+                ログインして、学生情報や授業の記録を管理できます。
+            </p>
+
+            <nav class="home-actions" aria-label="利用開始">
+                <a class="home-primary" th:href="@{/login}">
+                    ログイン
+                </a>
+
+                <a class="home-secondary" th:href="@{/signup}">
+                    新規登録
+                </a>
+            </nav>
+        </section>
+
+        <!-- 로그인한 사용자 -->
+        <section class="home-section" th:if="${loginEmail != null}">
+            <h2>学生管理</h2>
+
+            <p class="home-login-info"
+                th:text="|ログイン中：${loginEmail}|">
+            </p>
+
+            <p>
+                学生一覧から、授業の [予定/出欠/授業記録] を確認できます。
+            </p>
+
+            <nav class="home-actions" aria-label="学生管理">
+                <a class="home-primary" th:href="@{/students}">
+                    学生一覧へ
+                </a>
+
+                <a class="home-secondary" th:href="@{/students/new}">
+                    学生を登録する
+                </a>
+            </nav>
+        </section>
+
+        <!-- ログアウト도 실제 처리는 POST 요청으로 유지 -->
+        <div class="home-footer" th:if="${loginEmail != null}">
+            <form th:action="@{/logout}" method="post">
+                <button class="home-logout" type="submit">
+                    ログアウト
+                </button>
+            </form>
+        </div>
+    </main>
+</body>
+
 </html>

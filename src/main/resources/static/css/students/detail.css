@@ -1,0 +1,169 @@
+/* 학생 기본 정보를 세 칸으로 배치 */
+.student-info {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    padding: 24px;
+    border: 1px solid #dddddd;
+}
+
+.student-info h2 {
+    margin: 0 0 8px;
+    color: #555555;
+    font-size: 14px;
+}
+
+.student-info p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* 값이 없는 선택 항목의 표시 */
+.student-info p:empty::before {
+    content: "未入力";
+    color: #777777;
+}
+
+/* 강사 메모는 전체 너비 사용 */
+.student-memo {
+    grid-column: 1 / -1;
+}
+
+.student-memo p {
+    white-space: pre-wrap;
+}
+
+/* 학생 정보 수정 링크 */
+.student-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 24px 0;
+}
+
+.student-actions a {
+    padding: 10px 16px;
+    border: 1px solid #555555;
+    text-decoration: none;
+}
+
+.student-actions a:hover {
+    background-color: #f2f2f2;
+}
+
+/* 학생 편집 링크만 청록색으로 구분 */
+.student-actions .student-edit {
+    border-color: #326b68;
+    background-color: #ffffff;
+    color: #326b68;
+}
+
+.student-actions .student-edit:hover {
+    background-color: #eef5f4;
+}
+
+/* 향후 확장할 정보 영역 */
+.student-overview {
+    margin-top: 40px;
+}
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.overview-card {
+    min-height: 180px;
+    padding: 20px;
+    border: 1px dashed #cccccc;
+}
+
+.overview-card h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+}
+
+.overview-card p {
+    margin: 12px 0 0;
+    color: #666666;
+    font-size: 14px;
+}
+
+.preparing-label {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid #cccccc;
+    color: #666666;
+    font-size: 12px;
+}
+
+/* 삭제 영역은 위쪽 작업과 간격을 두고 구분 */
+.student-delete {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid #dddddd;
+}
+
+/* 삭제 버튼만 빨간색으로 강조 */
+.student-delete button {
+    padding: 10px 16px;
+    border: 1px solid #b3261e;
+    background-color: #ffffff;
+    color: #b3261e;
+    font: inherit;
+    cursor: pointer;
+}
+
+.student-delete button:hover {
+    background-color: #fff2f2;
+}
+
+/* 학생 목록으로 돌아가는 링크를 오른쪽에 배치 */
+.student-back {
+    margin-top: 24px;
+    text-align: right;
+}
+
+/* 좁은 화면에서는 한 칸씩 세로로 배치 */
+@media (max-width: 700px) {
+    .student-info,
+    .overview-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 제목 왼쪽, 수업 목록 링크 오른쪽 */
+.student-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.student-header h1 {
+    margin: 0;
+}
+
+/* 주요 이동 링크를 테두리형으로 표시 */
+.student-lessons-link {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    border: 1px solid #555555;
+    background-color: #ffffff;
+    color: #222222;
+    text-decoration: none;
+}
+
+.student-lessons-link:hover {
+    background-color: #f2f2f2;
+}
+
+/* 좁은 화면에서는 제목 아래로 배치 */
+@media (max-width: 600px) {
+    .student-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

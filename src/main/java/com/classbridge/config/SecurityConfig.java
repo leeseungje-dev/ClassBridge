@@ -3,7 +3,6 @@ package com.classbridge.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Bean;
 
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -25,12 +24,17 @@ public class SecurityConfig {
 		
 		// 경로 요청별 접근 규칙 설정
 		http.authorizeHttpRequests((auth) -> {
-			auth.requestMatchers("/", "/signup", "/error").permitAll();
+			// 홈, 회원가입, 오류 경로와 CSS는 로그인 없이 접근 가능
+			auth.requestMatchers("/", "/signup", "/error", "/css/**").permitAll();
+			
 			auth.anyRequest().authenticated();
 		});
 
-		// 기본 폼 로그인 기능 설정
-		http.formLogin(Customizer.withDefaults());
+		// 직접 작성한 로그인 화면 사용
+		http.formLogin((form) -> {
+			form.loginPage("/login");
+			form.permitAll();
+		});
 		
 		// 로그아웃 시 "/"경로로 이동하도록 설정
 		http.logout((logout) -> {

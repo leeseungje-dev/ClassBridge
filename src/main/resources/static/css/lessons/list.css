@@ -1,0 +1,124 @@
+/* 학생 이름 */
+.lesson-student-name {
+    margin-bottom: 20px;
+    color: #555555;
+}
+
+/* 제목 왼쪽, 수업 등록 링크 오른쪽 */
+.lesson-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.lesson-header h1 {
+    margin: 0;
+}
+
+/* 등록 화면으로 이동하는 링크는 청록 테두리형 */
+.lesson-create-link {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    border: 1px solid #326b68;
+    background-color: #ffffff;
+    color: #326b68;
+    text-decoration: none;
+}
+
+.lesson-create-link:hover {
+    background-color: #eef5f4;
+}
+
+/* 좁은 화면에서는 제목 아래로 배치 */
+@media (max-width: 600px) {
+    .lesson-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* 수업이 없을 때 안내 */
+.lesson-list-empty {
+    padding: 24px;
+    border: 1px dashed #cccccc;
+    color: #555555;
+}
+
+/* 좁은 화면에서는 표 영역만 가로 스크롤 */
+.lesson-table-wrapper {
+    overflow-x: auto;
+}
+
+/* 수업 목록 표 */
+.lesson-table {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.lesson-table th,
+.lesson-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #dddddd;
+    vertical-align: top;
+}
+
+.lesson-table th {
+    background-color: #f3f3f3;
+    font-weight: 600;
+}
+
+.lesson-table tbody tr:hover {
+    background-color: #f8f8f8;
+}
+
+/* 날짜와 상태는 중간에 줄바꿈하지 않음 */
+.lesson-table td:nth-child(1),
+.lesson-table td:nth-child(2) {
+    white-space: nowrap;
+}
+
+/* 상태 메모의 줄바꿈 유지 */
+.lesson-status-memo {
+    min-width: 160px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* 작업 링크를 한 줄에 하나씩 배치 */
+.lesson-row-actions a {
+    display: block;
+    margin-bottom: 8px;
+}
+
+/* 변경·작성 링크만 청록 테두리형으로 표시 */
+.lesson-row-actions .lesson-action-link {
+    width: fit-content;
+    padding: 6px 12px;
+    border: 1px solid #326b68;
+    background-color: #ffffff;
+    color: #326b68;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.lesson-row-actions .lesson-action-link:hover {
+    background-color: #eef5f4;
+}
+
+/* 일보 작성 조건 안내 */
+.lesson-row-actions span {
+    display: block;
+    min-width: 180px;
+    color: #666666;
+    font-size: 13px;
+}
+
+/* 학생 상세로 돌아가는 링크는 아래 오른쪽 */
+.lesson-list-back {
+    margin-top: 24px;
+    text-align: right;
+}

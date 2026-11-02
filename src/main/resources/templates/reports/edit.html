@@ -1,87 +1,85 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <title>授業記録の編集 | ClassBridge</title>
-    </head>
-    <body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>授業記録の編集 | ClassBridge</title>
+
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/reports/form.css}">
+</head>
+
+<body>
+    <main class="page">
         <h1>授業記録の編集</h1>
 
-        <p th:text="|学生名：${student.name}|"></p>
+        <p class="report-form-info" 
+            th:text="|学生名：${student.name}|">
+        </p>
 
-        <p th:text="|授業日時：${#temporals.format(
+        <p class="report-form-info" 
+            th:text="|授業日時：${#temporals.format(
                 lesson.lessonAt, 'yyyy/MM/dd HH:mm'
             )}|">
         </p>
 
-        <p>状態：出席</p>
+        <p class="report-form-info">状態：出席</p>
 
         <!-- 입력 오류 메시지 표시 -->
-        <p th:if="${errorMessage != null}"
-            th:text="${errorMessage}">
+        <p class="report-form-error" 
+            th:if="${errorMessage != null}" th:text="${errorMessage}">
         </p>
 
-        <form th:action="@{/lessons/{lessonId}/report/edit(lessonId=${lesson.id})}"
+        <form class="report-form" 
+            th:action="@{/lessons/{lessonId}/report/edit(lessonId=${lesson.id})}" 
             method="post">
 
             <!-- 수업 내용 입력 -->
-             <div>
+            <div>
                 <label for="content">授業内容（必須）:&nbsp;</label>
-                <textarea
-                    id="content"
-                    name="content"
-                    rows="6"
-                    th:text="${content}"
-                    placeholder="例）過去形を使って会話を練習しました。"
+                <textarea id="content" name="content" rows="6" th:text="${content}" placeholder="例）過去形を使って会話を練習しました。"
                     required></textarea>
-             </div>
+            </div>
 
-             <h2>学習観察記録</h2>
+            <h2>学習観察記録</h2>
 
-             <p>
+            <p>
                 必要な場合に追加してください。
                 追加した項目はすべて入力してください。
-             </p>
+            </p>
 
-             <!-- 관찰 항목을 표시하고 추가할 영역 -->
+            <!-- 관찰 항목을 표시하고 추가할 영역 -->
             <div id="observation-list">
 
                 <!-- 입력 오류 시 사용자가 입력했던 관찰 항목을 다시 표시 -->
-                <fieldset th:each="input : ${observations}">
+                <fieldset class="observation-field" 
+                    th:each="input : ${observations}">
                     <legend>観察項目</legend>
 
                     <!-- 수정할 기존 관찰 기록의 ID를 함께 전송 -->
-                    <input
-                        type="hidden"
-                        name="observationId"
-                        th:value="${input.id}">
+                    <input type="hidden" name="observationId" th:value="${input.id}">
 
                     <label>
                         分類（必須）:&nbsp;
                         <select name="category" required>
                             <option value="">選択してください</option>
-                            <option value="GRAMMAR"
-                                th:selected="${input.category == 'GRAMMAR'}">
+                            <option value="GRAMMAR" th:selected="${input.category == 'GRAMMAR'}">
                                 文法
                             </option>
-                            <option value="EXPRESSION"
-                                th:selected="${input.category == 'EXPRESSION'}">
+                            <option value="EXPRESSION" th:selected="${input.category == 'EXPRESSION'}">
                                 表現
                             </option>
-                            <option value="PRONUNCIATION"
-                                th:selected="${input.category == 'PRONUNCIATION'}">
+                            <option value="PRONUNCIATION" th:selected="${input.category == 'PRONUNCIATION'}">
                                 発音
                             </option>
-                            <option value="SPEAKING"
-                                th:selected="${input.category == 'SPEAKING'}">
+                            <option value="SPEAKING" th:selected="${input.category == 'SPEAKING'}">
                                 会話
                             </option>
-                            <option value="LISTENING"
-                                th:selected="${input.category == 'LISTENING'}">
+                            <option value="LISTENING" th:selected="${input.category == 'LISTENING'}">
                                 聞き取り
                             </option>
-                            <option value="OTHER"
-                                th:selected="${input.category == 'OTHER'}">
+                            <option value="OTHER" th:selected="${input.category == 'OTHER'}">
                                 その他
                             </option>
                         </select>
@@ -89,33 +87,25 @@
 
                     <label>
                         項目（必須）:&nbsp;
-                        <input
-                            type="text"
-                            name="item"
-                            th:value="${input.item}"
-                            placeholder="例）過去形"
-                            required>
+                        <input type="text" name="item" th:value="${input.item}" placeholder="例）過去形" required>
                     </label>
 
                     <label>観察内容（必須）:&nbsp;
-                        <textarea
-                            name="memo"
-                            rows="3"
-                            th:text="${input.memo}"
-                            placeholder="例）過去形を使うことができた。"
+                        <textarea name="memo" rows="3" th:text="${input.memo}" placeholder="例）過去形を使うことができた。"
                             required></textarea>
                     </label>
 
                     <!-- 이 버튼이 포함된 관찰 항목 한 묶음을 제거 -->
-                    <button type="button"
-                        onclick="this.closest('fieldset').remove()">
+                    <button class="observation-remove" 
+                        type="button" onclick="this.closest('fieldset').remove()">
                         この項目を取り除く
                     </button>
                 </fieldset>
             </div>
 
             <!-- 저장 요청 없이 관찰 입력란만 추가 -->
-            <button type="button"
+            <button class="observation-add" 
+                type="button" 
                 id="add-observation">
                 観察項目を追加する
             </button>
@@ -123,16 +113,15 @@
             <!-- 다음 수업에서 확인할 내용 입력 -->
             <div>
                 <label for="nextCheck">次回の確認事項 :&nbsp;</label>
-                <textarea
-                    id="nextCheck"
-                    name="nextCheck"
-                    rows="4"
-                    th:text="${nextCheck}"
+                <textarea id="nextCheck" name="nextCheck" rows="4" th:text="${nextCheck}"
                     placeholder="例）次回は過去形を復習する。"></textarea>
             </div>
 
             <!-- 일보와 관찰 항목을 함께 전송 -->
-            <button type="submit">保存する</button>
+            <button class="report-submit" 
+                type="submit">
+                保存する
+            </button>
         </form>
 
         <!-- 
@@ -140,14 +129,11 @@
             template 내부는 복사해서 화면에 넣기 전까지 표시되지 않음.
          -->
         <template id="observation-template">
-            <fieldset>
+            <fieldset class="observation-field">
                 <legend>観察項目</legend>
 
                 <!-- 새 관찰 기록은 아직 ID가 없으므로 빈 값 전송 -->
-                <input
-                    type="hidden"
-                    name="observationId"
-                    value="">
+                <input type="hidden" name="observationId" value="">
 
                 <label>
                     分類（必須）:&nbsp;
@@ -164,55 +150,49 @@
 
                 <label>
                     項目（必須）:&nbsp;
-                    <input
-                        type="text"
-                        name="item"
-                        placeholder="例）過去形"
-                        required>
+                    <input type="text" name="item" placeholder="例）過去形" required>
                 </label>
 
                 <label>
                     観察内容（必須）:&nbsp;
-                    <textarea
-                        name="memo"
-                        rows="3"
-                        placeholder="例）過去形を使うことができた。"
-                        required></textarea>
+                    <textarea name="memo" rows="3" placeholder="例）過去形を使うことができた。" required></textarea>
                 </label>
 
                 <!-- 이 버튼이 포함된 관찰 항목 한 묶음을 제거 -->
-                <button type="button"
-                    onclick="this.closest('fieldset').remove()">
+                <button class="observation-remove" 
+                    type="button" onclick="this.closest('fieldset').remove()">
                     この項目を取り除く
                 </button>
             </fieldset>
         </template>
 
-        <p>
+        <p class="report-form-back">
             <a th:href="@{/lessons/{lessonId}/report(lessonId=${lesson.id})}">
                 授業記録へ戻る
             </a>
         </p>
+    </main>
 
-        <script>
-            // 관찰 항목 추가 버튼 찾기
-            const addButton = document.getElementById("add-observation");
+    <script>
+        // 관찰 항목 추가 버튼 찾기
+        const addButton = document.getElementById("add-observation");
 
-            // 관찰 항목을 넣을 영역 찾기
-            const observationList = document.getElementById("observation-list");
+        // 관찰 항목을 넣을 영역 찾기
+        const observationList = document.getElementById("observation-list");
 
-            // 복사할 입력란의 템플릿 찾기
-            const observationTemplate = document.getElementById("observation-template");
+        // 복사할 입력란의 템플릿 찾기
+        const observationTemplate = document.getElementById("observation-template");
 
-            // 추가 버튼을 클릭했을 때 실행
-            addButton.addEventListener("click", function() {
-                // 입력란의 템플릿 안에 있는 내용을 모두 복사
-                const newObservation = observationTemplate.content.cloneNode(true);
+        // 추가 버튼을 클릭했을 때 실행
+        addButton.addEventListener("click", function () {
+            // 입력란의 템플릿 안에 있는 내용을 모두 복사
+            const newObservation = observationTemplate.content.cloneNode(true);
 
-                // 복사한 입력란을 관찰 항목 영역에 추가
-                observationList.appendChild(newObservation);
-            });
-        </script>
+            // 복사한 입력란을 관찰 항목 영역에 추가
+            observationList.appendChild(newObservation);
+        });
+    </script>
 
-    </body>
+</body>
+
 </html>

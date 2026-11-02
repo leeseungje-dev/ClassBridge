@@ -1,38 +1,54 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <title>授業日時の変更 | ClassBridge</title>
-    </head>
-    <body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>授業日時の変更 | ClassBridge</title>
+
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/lessons/form.css}">
+</head>
+
+<body>
+    <main class="page">
         <h1>授業日時の変更</h1>
 
-        <p th:text="|学生名：${student.name}|"></p>
+        <p class="lesson-form-info"
+            th:text="|学生名：${student.name}|">
+        </p>
 
-        <p th:if="${errorMessage != null}"
-            th:text="${errorMessage}"></p>
+        <p class="lesson-form-error"
+            th:if="${errorMessage != null}"
+            th:text="${errorMessage}">
+        </p>
 
-        <form th:action="@{/lessons/{id}/edit(id=${lesson.id})}"
+        <!-- 기존 수업의 일시를 수정하는 요청 -->
+        <form class="lesson-form"
+            th:action="@{/lessons/{id}/edit(id=${lesson.id})}"
             method="post">
             <div>
                 <label for="lessonAt">授業日時（必須）：&nbsp;</label>
 
-                <input
-                    type="datetime-local"
-                    id="lessonAt"
+                <!-- 오류가 있으면 입력한 값, 처음 열면 기존 수업 일시 표시 -->
+                <input 
+                    type="datetime-local" 
+                    id="lessonAt" 
                     name="lessonAt"
-                    th:value="${lessonAt != null ? lessonAt : lesson.lessonAt}"
-                    step="60"
+                    th:value="${lessonAt != null ? lessonAt : lesson.lessonAt}" 
+                    step="60" 
                     required>
             </div>
 
             <button type="submit">保存する</button>
         </form>
 
-        <p>
+        <p class="lesson-form-back">
             <a th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
                 授業一覧へ戻る
             </a>
         </p>
-    </body>
+    </main>
+</body>
+
 </html>

@@ -1,0 +1,112 @@
+/* 학생 이름과 수업 일시 */
+.report-info {
+    margin: 0 0 12px;
+    color: #555555;
+}
+
+/* 수업 내용, 관찰 기록, 다음 확인 사항 */
+.report-section {
+    margin-top: 24px;
+    padding: 24px;
+    border: 1px solid #dddddd;
+}
+
+.report-section h2 {
+    margin: 0 0 16px;
+    font-size: 20px;
+}
+
+.report-section p {
+    margin: 0 0 12px;
+    overflow-wrap: anywhere;
+}
+
+.report-section p:last-child {
+    margin-bottom: 0;
+}
+
+/* 좁은 화면에서는 표 영역만 가로로 스크롤 */
+.report-table-wrapper {
+    overflow-x: auto;
+}
+
+.report-table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.report-table th,
+.report-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #dddddd;
+    vertical-align: top;
+}
+
+.report-table th {
+    background-color: #f3f3f3;
+    font-weight: 600;
+}
+
+/* 분류는 한 줄로, 항목과 관찰 내용은 긴 글도 줄바꿈 */
+.report-table td:first-child {
+    white-space: nowrap;
+}
+
+.report-table td:nth-child(2),
+.report-table td:nth-child(3) {
+    overflow-wrap: anywhere;
+}
+
+.report-table td:nth-child(2) {
+    min-width: 120px;
+}
+
+.report-table td:nth-child(3) {
+    min-width: 240px;
+}
+
+/* 일보 수정 링크 */
+.report-actions {
+    margin: 24px 0;
+}
+
+/* 일보 편집 링크: 청록 테두리와 글씨 */
+.report-actions a {
+    display: inline-block;
+    padding: 10px 16px;
+    border: 1px solid #326b68;
+    background-color: #ffffff;
+    color: #326b68;
+    text-decoration: none;
+}
+
+.report-actions a:hover {
+    background-color: #eef5f4;
+}
+
+/* 상세 화면의 돌아가기 링크를 오른쪽에 배치 */
+.report-back {
+    margin: 12px 0;
+    text-align: right;
+}
+
+/* 작은 화면에서는 상자 안쪽 여백을 줄임 */
+@media (max-width: 700px) {
+    .report-section {
+        padding: 16px;
+    }
+}
+
+/* 상자 아래 오른쪽에 표시하는 기록 시각 */
+.report-timestamps {
+    margin-top: 12px;
+    color: #666666;
+    font-size: 12px;
+    text-align: right;
+}
+
+.report-timestamps p {
+    margin: 4px 0;
+}

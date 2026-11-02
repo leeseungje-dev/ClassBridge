@@ -1,0 +1,111 @@
+/* 서비스 제목과 소개 */
+.home-header {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #dddddd;
+}
+
+.home-header h1 {
+    margin: 0 0 12px;
+    font-size: 36px;
+}
+
+.home-description {
+    margin: 0;
+    color: #555555;
+}
+
+/* 서버에서 전달하는 안내 문구 */
+.home-message {
+    margin: 0 0 24px;
+    overflow-wrap: anywhere;
+}
+
+/* 로그인 상태에 따른 주요 기능 영역 */
+.home-section {
+    padding: 24px;
+    border: 1px solid #dddddd;
+}
+
+.home-section h2 {
+    margin: 0 0 16px;
+}
+
+.home-section p {
+    margin: 0 0 16px;
+}
+
+/* 긴 이메일도 화면 밖으로 넘치지 않도록 처리 */
+.home-login-info {
+    color: #555555;
+    overflow-wrap: anywhere;
+}
+
+/* 주요 진입 링크 배치 */
+.home-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.home-actions a {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 1px solid #326b68;
+    text-align: center;
+    text-decoration: none;
+}
+
+/* 로그인과 학생 목록: 홈의 주요 진입점 */
+.home-actions .home-primary {
+    background-color: #326b68;
+    color: #ffffff;
+}
+
+.home-actions .home-primary:hover {
+    border-color: #285754;
+    background-color: #285754;
+}
+
+/* 신규 등록과 학생 등록: 보조 진입점 */
+.home-actions .home-secondary {
+    background-color: #ffffff;
+    color: #326b68;
+}
+
+.home-actions .home-secondary:hover {
+    background-color: #eef5f4;
+}
+
+/* 로그아웃은 아래 오른쪽에 배치 */
+.home-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.home-logout {
+    padding: 8px 16px;
+    border: 1px solid #777777;
+    border-radius: 0;
+    background-color: #ffffff;
+    color: #555555;
+    font: inherit;
+    cursor: pointer;
+}
+
+.home-logout:hover {
+    background-color: #f2f2f2;
+}
+
+/* 작은 화면에서는 여백과 제목 크기를 줄임 */
+@media (max-width: 600px) {
+    .home-header h1 {
+        font-size: 30px;
+    }
+
+    .home-section {
+        padding: 16px;
+    }
+}
