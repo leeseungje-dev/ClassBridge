@@ -109,3 +109,57 @@
         padding: 16px;
     }
 }
+
+/* 위쪽은 학생 관리와 달력을 두 칸으로 배치 */
+.home-dashboard-top {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.home-dashboard-top > section {
+    min-width: 0;
+}
+
+/* 아직 구현하지 않은 기능의 안내 상자 */
+.home-placeholder {
+    min-height: 240px;
+    padding: 24px;
+    border: 1px dashed #cccccc;
+}
+
+.home-placeholder h2 {
+    margin: 0 0 16px;
+}
+
+.home-placeholder p {
+    margin: 16px 0 0;
+    color: #666666;
+    overflow-wrap: anywhere;
+}
+
+/* 준비 중 표시 */
+.home-preparing {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid #cccccc;
+    color: #666666;
+    font-size: 12px;
+}
+
+/* 하루 수업 목록은 아래쪽 전체 너비 사용 */
+.home-schedule {
+    min-height: 180px;
+    margin-top: 24px;
+}
+
+/* 좁은 화면에서는 한 칸씩 세로 배치 */
+@media (max-width: 700px) {
+    .home-dashboard-top {
+        grid-template-columns: 1fr;
+    }
+
+    .home-placeholder {
+        padding: 16px;
+    }
+}

@@ -42,3 +42,31 @@ a {
     outline: 2px solid #333333;
     outline-offset: 3px;
 }
+
+/* 스크롤해도 화면 위에 유지되는 헤더 */
+.home-brand {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: #ffffff;
+    border-bottom: 1px solid #dddddd;
+}
+
+/* 로고와 본문의 왼쪽 정렬선을 맞춤 */
+.home-brand-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 12px 24px;
+}
+
+/* 버튼 모양 없이 글자 로고로 표시 */
+.home-brand a {
+    color: #222222;
+    font-size: 20px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.home-brand a:hover {
+    color: #555555;
+}

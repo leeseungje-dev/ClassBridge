@@ -11,10 +11,21 @@
 </head>
 
 <body>
+    <!-- 스크롤해도 위에 유지되는 로고 헤더 -->
+    <header class="home-brand">
+        <div class="home-brand-inner">
+            <a th:href="@{/}" aria-label="ClassBridge ホームへ">
+                ClassBridge
+            </a>
+        </div>
+    </header>
+
     <main class="page">
+
+
         <!-- 서비스 소개 -->
         <header class="home-header">
-            <h1>ClassBridge</h1>
+            <h1>ホーム</h1>
 
             <p class="home-description">
                 個人の語学講師のための [学生/授業記録] 管理
@@ -45,28 +56,54 @@
             </nav>
         </section>
 
-        <!-- 로그인한 사용자 -->
-        <section class="home-section" th:if="${loginEmail != null}">
-            <h2>学生管理</h2>
+        <!-- 로그인한 사용자의 홈 -->
+        <div class="home-dashboard" th:if="${loginEmail != null}">
 
-            <p class="home-login-info"
-                th:text="|ログイン中：${loginEmail}|">
-            </p>
+            <div class="home-dashboard-top">
+                <!-- 기존 학생 관리 기능 -->
+                <section class="home-section">
+                    <h2>学生管理</h2>
 
-            <p>
-                学生一覧から、授業の [予定/出欠/授業記録] を確認できます。
-            </p>
+                    <p class="home-login-info" th:text="|ログイン中：${loginEmail}|">
+                    </p>
 
-            <nav class="home-actions" aria-label="学生管理">
-                <a class="home-primary" th:href="@{/students}">
-                    学生一覧へ
-                </a>
+                    <p>
+                        学生一覧から、授業の [予定/出欠/授業記録] を確認できます。
+                    </p>
 
-                <a class="home-secondary" th:href="@{/students/new}">
-                    学生を登録する
-                </a>
-            </nav>
-        </section>
+                    <nav class="home-actions" aria-label="学生管理">
+                        <a class="home-primary" th:href="@{/students}">
+                            学生一覧へ
+                        </a>
+
+                        <a class="home-secondary" th:href="@{/students/new}">
+                            学生を登録する
+                        </a>
+                    </nav>
+                </section>
+
+                <!-- 앞으로 수업 날짜를 표시할 달력 영역 -->
+                <section class="home-placeholder">
+                    <h2>授業カレンダー</h2>
+                    <span class="home-preparing">準備中</span>
+
+                    <p>
+                        授業がある日をカレンダーに表示する予定です。
+                    </p>
+                </section>
+            </div>
+
+            <!-- 앞으로 오늘 또는 가장 가까운 수업일의 목록을 표시할 영역 -->
+            <section class="home-placeholder home-schedule">
+                <h2>授業スケジュール</h2>
+                <span class="home-preparing">準備中</span>
+
+                <p>
+                    今日の授業、または次に授業がある日の一覧を表示する予定です。
+                </p>
+            </section>
+
+        </div>
 
         <!-- ログアウト도 실제 처리는 POST 요청으로 유지 -->
         <div class="home-footer" th:if="${loginEmail != null}">
