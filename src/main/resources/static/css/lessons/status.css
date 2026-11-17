@@ -1,0 +1,84 @@
+/* 통합 입력 화면의 너비 */
+#attendance-form {
+    max-width: 760px;
+}
+
+/* 상태에 따라 숨긴 영역은 표시하지 않음 */
+#attendance-form [hidden] {
+    display: none !important;
+}
+
+/* 숨겨진 관찰 ID는 입력란 스타일에서 제외 */
+#attendance-form input[type="hidden"] {
+    display: none;
+}
+
+/* 일보 입력 항목 사이 간격 */
+.attendance-field {
+    margin-bottom: 24px;
+}
+
+.attendance-field h2 {
+    margin: 0 0 12px;
+    font-size: 20px;
+}
+
+/* 관찰 항목 한 묶음 */
+.attendance-observation {
+    min-width: 0;
+    margin: 0 0 24px;
+    padding: 20px;
+    border: 1px solid #cccccc;
+}
+
+.attendance-observation legend {
+    padding: 0 8px;
+    font-weight: 600;
+}
+
+#attendance-form .attendance-observation label {
+    margin-bottom: 20px;
+}
+
+/* 제목과 입력란 사이 간격 */
+.attendance-observation input:not([type="hidden"]),
+.attendance-observation select,
+.attendance-observation textarea {
+    margin-top: 8px;
+}
+
+/* 추가 버튼은 청록 테두리형 */
+#attendance-form .attendance-add {
+    border-color: #326b68;
+    background-color: #ffffff;
+    color: #326b68;
+}
+
+#attendance-form .attendance-add:hover {
+    background-color: #eef5f4;
+}
+
+/* 제거 버튼은 차분한 빨간색 */
+#attendance-form .attendance-remove {
+    border-color: #b45b5b;
+    background-color: #ffffff;
+    color: #974444;
+}
+
+#attendance-form .attendance-remove:hover {
+    background-color: #fff3f3;
+}
+
+/* 작은 화면에서는 관찰 상자 여백 축소 */
+@media (max-width: 700px) {
+    .attendance-observation {
+        padding: 16px;
+    }
+}
+
+/* 관찰 입력값은 제목의 굵기를 물려받지 않도록 처리 */
+#attendance-form .attendance-observation input:not([type="hidden"]),
+#attendance-form .attendance-observation select,
+#attendance-form .attendance-observation textarea {
+    font-weight: 400;
+}

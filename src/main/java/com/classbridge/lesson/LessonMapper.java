@@ -4,11 +4,13 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 
 /*
  * author : LEE SEUNGJE
- * date : 2026.10.25 ~ 2026.10.26
+ * date : 2026.10.25 ~ 2026.11.15
  */
 
 @Mapper
@@ -43,6 +45,40 @@ public abstract interface LessonMapper {
 			@Param("instructorId") Long instructorId,
 			@Param("status") String status,
 			@Param("statusMemo") String statusMemo
+		);
+	
+	// home 화면에 표시할 수업 조회
+	// 오늘부터 예정 수업이 있는 가장 가까운 날짜 조회
+	public abstract LocalDate findHomeLessonDate(
+			@Param("instructorId") Long instructorId,
+			@Param("todayStart") LocalDateTime todayStart
+		);
+	
+	// 선택한 날짜의 모든 수업 조회 및 담당 강사 확인
+	public abstract List<HomeLesson> findHomeLessonsByDate(
+			@Param("instructorId") Long instructorId,
+			// 선택한 날짜의 00:00
+			@Param("dayStart") LocalDateTime dayStart,
+			// 선택한 날짜 다음 날의 00:00
+			@Param("nextDayStart") LocalDateTime nextDayStart
+		);
+	
+	// 출석했지만 일보가 없는 수업 조회 및 담당 강사 확인
+	public abstract List<HomeLesson> findLessonsWithoutReport(
+			@Param("instructorId") Long instructorId
+		);
+	
+	// 선택한 수업보다 앞선 같은 학생의 가장 최근 출석 수업 조회
+	public abstract Lesson findPreviousAttendedLesson(
+			@Param("lessonId") Long lessonId,
+			@Param("instructorId") Long instructorId
+		);
+	
+	// 달력에 표시할 해당 월의 수업 날짜 조회
+	public abstract List<LocalDate> findLessonDatesForMonth(
+			@Param("instructorId") Long instructorId,
+			@Param("monthStart") LocalDateTime monthStart,
+			@Param("nextMonthStart") LocalDateTime nextMonthStart
 		);
 	
 }

@@ -27,4 +27,9 @@ public abstract interface LessonReportMapper {
 			@Param("instructorId") Long instructorId
 		);
 	
+	// 수업 준비 상세 화면에서 사용할 선택 수업보다 앞선 같은 학생의 가장 최근 일보 조회
+	public abstract LessonReport findPreviousLessonReport(
+			@Param("lessonId") Long lessonId,
+			@Param("instructorId") Long instructorId
+		);
 }

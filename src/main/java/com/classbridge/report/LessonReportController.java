@@ -27,7 +27,7 @@ import jakarta.servlet.http.HttpServletResponse;
 /*
  * 수업일보 화면의 요청 처리 Controller
  * author : LEE SEUNGJE
- * date : 2026.10.31 ~ 2026.10.31
+ * date : 2026.10.31 ~ 2026.11.16
  */
 
 @Controller
@@ -150,9 +150,11 @@ public class LessonReportController {
 			model.addAttribute("student", student);
 			model.addAttribute("lesson", lesson);
 			
-			// 출석하지 않은 수업에는 작성 조건 안내
-			if (!"ATTENDED".equals(lesson.getStatus())) {
-				model.addAttribute("errorMessage", "出席した授業のみ記録を作成できます。");
+			// 출석, 지각 이외의 수업에는 작성 조건 안내
+			if (!"ATTENDED".equals(lesson.getStatus())
+					&& !"LATE".equals(lesson.getStatus())
+			) {
+				model.addAttribute("errorMessage", "出席・遅刻の授業のみ記録を作成できます。");
 				
 				return "reports/not-available";
 			}
@@ -224,10 +226,12 @@ public class LessonReportController {
 		model.addAttribute("lesson", lesson);
 		
 		// 작성 화면을 연 뒤 수업 상태가 바뀌었을 수도 있으므로 다시 확인
-		if (!"ATTENDED".equals(lesson.getStatus())) {
+		if (!"ATTENDED".equals(lesson.getStatus())
+				&& !"LATE".equals(lesson.getStatus())
+		) {
 			model.addAttribute(
 					"errorMessage",
-					"出席した授業のみ記録を作成できます。"
+					"出席・遅刻の授業のみ記録を作成できます。"
 				);
 			
 			return "reports/not-available";

@@ -8,6 +8,8 @@
 
     <link rel="stylesheet" th:href="@{/css/common.css}">
     <link rel="stylesheet" th:href="@{/css/home.css}">
+    
+    <script th:src="@{/js/home.js}" defer></script>
 </head>
 
 <body>
@@ -57,7 +59,11 @@
         </section>
 
         <!-- 로그인한 사용자의 홈 -->
-        <div class="home-dashboard" th:if="${loginEmail != null}">
+        <!-- JavaScript에서 사용할 요청 주소 -->
+        <div class="home-dashboard"
+            th:if="${loginEmail != null}"
+            th:attr="data-calendar-url=@{/home/calendar},
+            data-lessons-url=@{/home/lessons}">
 
             <div class="home-dashboard-top">
                 <!-- 기존 학생 관리 기능 -->
@@ -82,25 +88,217 @@
                     </nav>
                 </section>
 
-                <!-- 앞으로 수업 날짜를 표시할 달력 영역 -->
-                <section class="home-placeholder">
-                    <h2>授業カレンダー</h2>
-                    <span class="home-preparing">準備中</span>
+                <!-- 월 이동 시 이 달력 영역만 교체 -->
+                <section class="home-calendar" id="lesson-calendar" th:fragment="lessonCalendar">
 
-                    <p>
-                        授業がある日をカレンダーに表示する予定です。
-                    </p>
+                    <h2>授業カレンダー</h2>
+
+                    <!-- 이전 달·다음 달 이동 -->
+                    <nav class="calendar-navigation" aria-label="表示する月">
+                        <button type="button" class="calendar-month-button" th:attr="data-month=${previousMonth}"
+                            aria-label="前の月">
+                            ‹
+                        </button>
+
+                        <h3 th:text="|${calendarMonth.year}年 ${calendarMonth.monthValue}月|">
+                        </h3>
+
+                        <button type="button" class="calendar-month-button" th:attr="data-month=${nextMonth}"
+                            aria-label="次の月">
+                            ›
+                        </button>
+                    </nav>
+
+                    <div class="calendar-grid">
+                        <!-- 요일은 일요일부터 토요일 순서 -->
+                        <span class="calendar-weekday">日</span>
+                        <span class="calendar-weekday">月</span>
+                        <span class="calendar-weekday">火</span>
+                        <span class="calendar-weekday">水</span>
+                        <span class="calendar-weekday">木</span>
+                        <span class="calendar-weekday">金</span>
+                        <span class="calendar-weekday">土</span>
+
+                        <th:block th:each="day : ${calendarDays}">
+                            <!-- 해당 월에 속하지 않는 빈칸 -->
+                            <span class="calendar-empty" th:if="${day == null}" aria-hidden="true">
+                            </span>
+
+                            <!-- 날짜를 누르면 해당 날짜의 수업 조회 -->
+                            <button type="button" class="calendar-day" th:if="${day != null}"
+                                th:classappend="${day.equals(today)} ? 'is-today' : ''" th:attr="data-date=${day}"
+                                th:aria-label="${#temporals.format(day, 'yyyy年M月d日')}" aria-pressed="false">
+
+                                <span th:text="${day.dayOfMonth}"></span>
+
+                                <!-- 예정·출석·지각 수업이 있는 날짜에 점 표시 -->
+                                <span class="calendar-dot" th:if="${#lists.contains(lessonDates, day)}"
+                                    aria-hidden="true">
+                                </span>
+
+                                <span class="calendar-accessible-text" th:if="${#lists.contains(lessonDates, day)}">
+                                    授業あり
+                                </span>
+                            </button>
+                        </th:block>
+                    </div>
+
+                    <p class="calendar-legend">● 授業がある日</p>
                 </section>
             </div>
 
-            <!-- 앞으로 오늘 또는 가장 가까운 수업일의 목록을 표시할 영역 -->
-            <section class="home-placeholder home-schedule">
-                <h2>授業スケジュール</h2>
-                <span class="home-preparing">準備中</span>
+            <!-- 날짜 선택 시 이 영역만 새 HTML로 교체 -->
+            <!-- 조회 중 또는 요청 실패 안내 -->
+            <p id="home-load-message" role="status" hidden></p>
 
-                <p>
-                    今日の授業、または次に授業がある日の一覧を表示する予定です。
+            <!-- 선택한 날짜의 수업 목록 -->
+            <section class="home-schedule"
+                id="lesson-schedule"
+                th:fragment="lessonSchedule"
+                th:attr="data-selected-date=${lessonDate}">
+
+                <h2>授業スケジュール</h2>
+
+                <!-- 오늘 이후 예정 수업이 없을 때 -->
+                <p th:if="${lessonDate == null}">
+                    予定されている授業はありません。
                 </p>
+
+                <!-- 표시할 날짜가 있을 때 -->
+                <div th:if="${lessonDate != null}">
+                    <p class="home-schedule-date" th:text="${#temporals.format(lessonDate,'yyyy/MM/dd')}">
+                    </p>
+
+                    <!-- 선택한 날짜에 수업이 없을 때 -->
+                    <p th:if="${#lists.isEmpty(homeLessons)}">
+                        この日の授業は登録されていません。
+                    </p>
+
+                    <!-- 수업이 있을 때만 표 표시 -->
+                    <div class="home-schedule-table-wrapper"
+                        th:if="${!#lists.isEmpty(homeLessons)}">
+                        <table class="home-schedule-table">
+                            <thead>
+                                <tr>
+                                    <th>時間</th>
+                                    <th>学生名</th>
+                                    <th>状態</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <tr th:each="lesson : ${homeLessons}">
+                                    <td>
+                                        <a th:href="@{/lessons/{id}(id=${lesson.id})}"
+                                            th:text="${#temporals.format(lesson.lessonAt, 'HH:mm')}"
+                                            th:aria-label="|${lesson.studentName}の授業の準備|">
+                                        </a>
+                                    </td>
+
+                                    <td>
+                                        <a th:href="@{/students/{id}(id=${lesson.studentId})}"
+                                            th:text="${lesson.studentName}">
+                                        </a>
+                                    </td>
+
+                                    <!-- 출결 상태와 상태별 색상 -->
+                                    <td th:switch="${lesson.status}">
+                                        <span th:case="'SCHEDULED'"
+                                            class="lesson-status lesson-status-scheduled">予定</span>
+
+                                        <span th:case="'ATTENDED'"
+                                            class="lesson-status lesson-status-attended">出席</span>
+
+                                        <span th:case="'LATE'" class="lesson-status lesson-status-late">遅刻</span>
+
+                                        <span th:case="'CANCELLED'"
+                                            class="lesson-status lesson-status-cancelled">キャンセル</span>
+
+                                        <span th:case="'ABSENT'" class="lesson-status lesson-status-absent">欠席</span>
+
+                                        <span th:case="*">不明</span>
+                                    </td>
+
+                                    <td class="home-schedule-actions">
+                                        <!-- 해당 수업의 상태 변경 -->
+                                        <a class="home-schedule-action"
+                                            th:href="@{/lessons/{id}/status(id=${lesson.id})}">
+                                            状態を変更する
+                                        </a>
+
+                                        <!-- 일보가 있으면 상세 화면으로 이동 -->
+                                        <a th:if="${lesson.lessonReportId != null}"
+                                            th:href="@{/lessons/{lessonId}/report(lessonId=${lesson.id})}">
+                                            授業記録を見る
+                                        </a>
+
+                                        <!-- 일보가 없고 출석 또는 지각이면 작성 화면으로 이동 -->
+                                        <a class="home-schedule-action" th:if="${lesson.lessonReportId == null
+                                                and (lesson.status == 'ATTENDED' or lesson.status == 'LATE')}"
+                                            th:href="@{/lessons/{lessonId}/report/new(lessonId=${lesson.id})}">
+                                            授業記録を作成する
+                                        </a>
+
+                                        <!-- 해당 학생의 전체 수업 목록으로 이동 -->
+                                        <a th:href="@{/students/{studentId}/lessons(studentId=${lesson.studentId})}">
+                                            授業一覧を見る
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 출석했지만 일보가 없는 수업이 있을 때만 표시 -->
+            <section class="home-missing-reports" th:if="${!#lists.isEmpty(lessonsWithoutReport)}">
+
+                <h2>
+                    <span aria-hidden="true">⚠</span>
+                    <span th:text="|未作成の授業記録（${#lists.size(lessonsWithoutReport)}件）|">
+                    </span>
+                </h2>
+
+                <!-- 출석 또는 지각했지만 일보가 없는 수업이 있을 때만 표시 -->
+                <p class="home-missing-reports-note">
+                    出席・遅刻の授業で、記録がまだ作成されていないものがあります。
+                </p>
+
+                <div class="home-missing-reports-table-wrapper">
+                    <table class="home-missing-reports-table">
+                        <thead>
+                            <tr>
+                                <th>授業日時</th>
+                                <th>学生名</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr th:each="lesson : ${lessonsWithoutReport}">
+                                <td th:text="${#temporals.format(
+                                     lesson.lessonAt, 'yyyy/MM/dd HH:mm'
+                                )}">
+                                </td>
+
+                                <td>
+                                    <a th:href="@{/students/{id}(id=${lesson.studentId})}"
+                                        th:text="${lesson.studentName}">
+                                    </a>
+                                </td>
+
+                                <td>
+                                    <a class="home-missing-report-link"
+                                        th:href="@{/lessons/{lessonId}/report/new(lessonId=${lesson.id})}">
+                                        授業記録を作成する
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
         </div>

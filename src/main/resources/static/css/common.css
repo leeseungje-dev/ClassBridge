@@ -70,3 +70,36 @@ a {
 .home-brand a:hover {
     color: #555555;
 }
+
+/* 출결 상태 표시 */
+.lesson-status {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* 예정: 회색 */
+.lesson-status-scheduled {
+    background-color: #f0f0f0;
+    color: #555555;
+}
+
+/* 출석: 차분한 초록색 */
+.lesson-status-attended {
+    background-color: #edf5ef;
+    color: #356747;
+}
+
+/* 지각: 차분한 주황색 */
+.lesson-status-late {
+    background-color: #fff3e5;
+    color: #925b20;
+}
+
+/* 결석·취소: 차분한 빨간색 */
+.lesson-status-absent,
+.lesson-status-cancelled {
+    background-color: #fff3f3;
+    color: #974444;
+}

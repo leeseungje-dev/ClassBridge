@@ -4,10 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>授業の状態変更 | ClassBridge</title>
+    <title>出欠・授業記録の入力 | ClassBridge</title>
 
     <link rel="stylesheet" th:href="@{/css/common.css}">
     <link rel="stylesheet" th:href="@{/css/lessons/form.css}">
+    <link rel="stylesheet" th:href="@{/css/lessons/status.css}">
 </head>
 
 <body>
@@ -21,54 +22,153 @@
     </header>
 
     <main class="page">
-        <h1>授業の状態変更</h1>
+        <h1>出欠・授業記録の入力</h1>
 
-        <p class="lesson-form-info"
-            th:text="|学生名：${student.name}|">
+        <p class="lesson-form-info" th:text="|学生名：${student.name}|">
         </p>
 
-        <p class="lesson-form-info"
-            th:text="|授業日時：${#temporals.format(
+        <p class="lesson-form-info" th:text="|授業日時：${#temporals.format(
                 lesson.lessonAt, 'yyyy/MM/dd HH:mm'
             )}|">
         </p>
 
-        <p class="lesson-form-error" 
-            th:if="${errorMessage != null}" 
-            th:text="${errorMessage}">
+        <p class="lesson-form-error" th:if="${errorMessage != null}" th:text="${errorMessage}">
         </p>
 
-        <form class="lesson-form" 
-            th:action="@{/lessons/{id}/status(id=${lesson.id})}" 
+        <form id="attendance-form" class="lesson-form" th:action="@{/lessons/{id}/status(id=${lesson.id})}"
             method="post">
+
+            <!-- 출결 상태 선택 -->
             <div>
-                <label for="status">状態（必須）：&nbsp;</label>
+                <label for="status">状態（必須）</label>
 
                 <select id="status" name="status" required>
-                    <option value="SCHEDULED" th:selected="${status == 'SCHEDULED'}">
+                    <option value="SCHEDULED" th:selected="${status == 'SCHEDULED'}" th:disabled="${hasReport}">
                         予定
                     </option>
+
                     <option value="ATTENDED" th:selected="${status == 'ATTENDED'}">
                         出席
                     </option>
-                    <option value="CANCELLED" th:selected="${status == 'CANCELLED'}">
+
+                    <option value="LATE" th:selected="${status == 'LATE'}">
+                        遅刻
+                    </option>
+
+                    <option value="CANCELLED" th:selected="${status == 'CANCELLED'}" th:disabled="${hasReport}">
                         キャンセル
                     </option>
-                    <option value="ABSENT" th:selected="${status == 'ABSENT'}">
+
+                    <option value="ABSENT" th:selected="${status == 'ABSENT'}" th:disabled="${hasReport}">
                         欠席
                     </option>
                 </select>
+
+                <p class="lesson-form-note" th:if="${hasReport}">
+                    授業記録があるため、出席・遅刻のみ選択できます。
+                </p>
             </div>
 
-            <div>
-                <label for="statusMemo">状態メモ ：&nbsp;</label>
+            <!-- 지각·결석·취소에서 표시할 상태 메모 -->
+            <div id="status-memo-fields" th:hidden="${status != 'LATE'
+            and status != 'ABSENT'
+            and status != 'CANCELLED'}">
 
-                <textarea id="statusMemo" name="statusMemo" rows="5" th:text="${statusMemo}"
-                    placeholder="例）体調不良のためキャンセル">
-                </textarea>
+                <label for="statusMemo">状態メモ（任意）</label>
+
+                <textarea id="statusMemo" name="statusMemo" rows="4" th:text="${statusMemo}"
+                    placeholder="例）電車の遅延で10分遅刻"></textarea>
             </div>
 
-            <button type="submit">保存する</button>
+            <!-- 출석·지각에서 표시할 일보 입력 영역 -->
+            <div id="report-fields" th:hidden="${status != 'ATTENDED' and status != 'LATE'}">
+
+                <div class="attendance-field">
+                    <label for="content">授業内容（必須）</label>
+
+                    <textarea id="content" name="content" rows="6" data-report-required
+                        th:required="${status == 'ATTENDED' or status == 'LATE'}" th:text="${content}"></textarea>
+                </div>
+
+                <div class="attendance-field">
+                    <label for="nextCheck">次回の確認事項（任意）</label>
+
+                    <textarea id="nextCheck" name="nextCheck" rows="4" th:text="${nextCheck}"></textarea>
+                </div>
+
+                <div class="attendance-field">
+                    <h2>学習観察記録</h2>
+
+                    <p class="lesson-form-note">
+                        必要に応じて追加してください。
+                        追加した項目はすべて入力し、不要な項目は削除してください。
+                    </p>
+
+                    <!-- 저장된 관찰 항목 또는 입력 오류로 돌아온 관찰 항목 -->
+                    <div id="observation-list">
+                        <fieldset class="attendance-observation" th:each="observation : ${observations}">
+
+                            <legend>観察項目</legend>
+
+                            <input type="hidden" name="observationId" th:value="${observation.id}">
+
+                            <label>
+                                分類（必須）
+                                <select name="category" data-report-required
+                                    th:required="${status == 'ATTENDED' or status == 'LATE'}">
+
+                                    <option value="">選択してください</option>
+                                    <option value="GRAMMAR" th:selected="${observation.category == 'GRAMMAR'}">
+                                        文法
+                                    </option>
+                                    <option value="EXPRESSION" th:selected="${observation.category == 'EXPRESSION'}">
+                                        表現
+                                    </option>
+                                    <option value="PRONUNCIATION"
+                                        th:selected="${observation.category == 'PRONUNCIATION'}">
+                                        発音
+                                    </option>
+                                    <option value="SPEAKING" th:selected="${observation.category == 'SPEAKING'}">
+                                        会話
+                                    </option>
+                                    <option value="LISTENING" th:selected="${observation.category == 'LISTENING'}">
+                                        聞き取り
+                                    </option>
+                                    <option value="OTHER" th:selected="${observation.category == 'OTHER'}">
+                                        その他
+                                    </option>
+                                </select>
+                            </label>
+
+                            <label>
+                                項目（必須）
+                                <input type="text" name="item" data-report-required
+                                    th:required="${status == 'ATTENDED' or status == 'LATE'}"
+                                    th:value="${observation.item}">
+                            </label>
+
+                            <label>
+                                観察内容（必須）
+                                <textarea name="memo" rows="4" data-report-required
+                                    th:required="${status == 'ATTENDED' or status == 'LATE'}"
+                                    th:text="${observation.memo}"></textarea>
+                            </label>
+
+                            <button type="button" class="attendance-remove" data-remove-observation>
+                                この項目を削除する
+                            </button>
+                        </fieldset>
+                    </div>
+
+                    <button type="button" id="add-observation" class="attendance-add">
+                        観察項目を追加する
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="attendance-submit">
+                保存する
+            </button>
         </form>
 
         <p class="lesson-form-back">
@@ -77,6 +177,46 @@
             </a>
         </p>
     </main>
+
+    <!-- 새 관찰 항목을 추가할 때 사용할 틀 -->
+    <template id="observation-template">
+        <fieldset class="attendance-observation">
+            <legend>観察項目</legend>
+
+            <!-- 새 항목이므로 기존 ID는 없음 -->
+            <input type="hidden" name="observationId" value="">
+
+            <label>
+                分類（必須）
+                <select name="category" data-report-required>
+                    <option value="">選択してください</option>
+                    <option value="GRAMMAR">文法</option>
+                    <option value="EXPRESSION">表現</option>
+                    <option value="PRONUNCIATION">発音</option>
+                    <option value="SPEAKING">会話</option>
+                    <option value="LISTENING">聞き取り</option>
+                    <option value="OTHER">その他</option>
+                </select>
+            </label>
+
+            <label>
+                項目（必須）
+                <input type="text" name="item" data-report-required>
+            </label>
+
+            <label>
+                観察内容（必須）
+                <textarea name="memo" rows="4" data-report-required></textarea>
+            </label>
+
+            <button type="button" class="attendance-remove" data-remove-observation>
+                この項目を削除する
+            </button>
+        </fieldset>
+    </template>
+
+    <!-- 입력 화면의 동작만 담당하는 JavaScript -->
+    <script th:src="@{/js/lessons/status.js}" defer></script>
 </body>
 
 </html>

@@ -102,4 +102,103 @@
 		
 	</update>
 	
+	<!--
+		home 화면에 표시할 mapper method 기능
+		오늘부터 예정 수업이 있는 가장 가까운 날짜 조회
+	-->
+	<select id="findHomeLessonDate"
+			resultType="java.time.LocalDate">
+			
+		SELECT MIN(TRUNC(L.LESSON_AT))
+		FROM LESSONS L
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		WHERE S.INSTRUCTOR_ID = #{instructorId}
+			AND L.LESSON_AT >= #{todayStart, jdbcType=TIMESTAMP}
+			AND L.STATUS = 'SCHEDULED'
+	</select>
+	
+	<!-- 선택한 날짜의 모든 수업 조회 및 담당 강사 확인 -->
+	<select id="findHomeLessonsByDate"
+			resultType="com.classbridge.lesson.HomeLesson">
+			
+		SELECT
+			L.ID,
+			L.STUDENT_ID AS "studentId",
+			S.NAME AS "studentName",
+			L.LESSON_AT AS "lessonAt",
+			L.STATUS,
+			R.ID AS "lessonReportId"
+		FROM LESSONS L
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		LEFT JOIN LESSON_REPORTS R
+			ON R.LESSON_ID = L.ID
+		WHERE S.INSTRUCTOR_ID = #{instructorId}
+			AND L.LESSON_AT >= #{dayStart, jdbcType=TIMESTAMP}
+			AND L.LESSON_AT &lt; #{nextDayStart, jdbcType=TIMESTAMP}
+		ORDER BY L.LESSON_AT ASC, L.ID ASC
+	</select>
+	
+	<!-- 출석, 지각했지만 일보가 없는 수업 조회 및 담당 강사 확인 -->
+	<select id="findLessonsWithoutReport"
+			resultType="com.classbridge.lesson.HomeLesson">
+		
+		SELECT
+			L.ID,
+			L.STUDENT_ID AS "studentId",
+			S.NAME AS "studentName",
+			L.LESSON_AT AS "lessonAt",
+			L.STATUS,
+			R.ID AS "lessonReportId"
+		FROM LESSONS L
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		LEFT JOIN LESSON_REPORTS R
+			ON R.LESSON_ID = L.ID
+		WHERE S.INSTRUCTOR_ID = #{instructorId}
+			AND L.STATUS IN ('ATTENDED', 'LATE')
+			AND R.ID IS NULL
+		ORDER BY L.LESSON_AT ASC, L.ID ASC
+	</select>
+	
+	<!-- 일보 유무와 관계없이 가장 최근 출석, 지각 수업 조회 -->
+	<select id="findPreviousAttendedLesson"
+			resultType="com.classbridge.lesson.Lesson">
+		SELECT
+			PREVIOUS_LESSON.ID,
+			PREVIOUS_LESSON.STUDENT_ID AS "studentId",
+			PREVIOUS_LESSON.LESSON_AT AS "lessonAt",
+			PREVIOUS_LESSON.STATUS,
+			PREVIOUS_LESSON.STATUS_MEMO AS "statusMemo",
+			PREVIOUS_LESSON.CREATED_AT AS "createdAt"
+		FROM LESSONS CURRENT_LESSON
+		INNER JOIN STUDENTS S
+			ON CURRENT_LESSON.STUDENT_ID = S.ID
+		INNER JOIN LESSONS PREVIOUS_LESSON
+			ON PREVIOUS_LESSON.STUDENT_ID = CURRENT_LESSON.STUDENT_ID
+		WHERE CURRENT_LESSON.ID = #{lessonId}
+			AND S.INSTRUCTOR_ID = #{instructorId}
+			AND PREVIOUS_LESSON.STATUS IN ('ATTENDED', 'LATE')
+			AND PREVIOUS_LESSON.LESSON_AT &lt; CURRENT_LESSON.LESSON_AT
+		ORDER BY
+			PREVIOUS_LESSON.LESSON_AT DESC,
+			PREVIOUS_LESSON.ID DESC
+		FETCH FIRST 1 ROW ONLY
+	</select>
+	
+	<!-- 해당 강사의 월별 수업 날짜를 중복 없이 조회 -->
+	<select id="findLessonDatesForMonth"
+		resultType="java.time.LocalDate">
+		SELECT DISTINCT TRUNC(L.LESSON_AT)
+		FROM LESSONS L
+		INNER JOIN STUDENTS S
+			ON L.STUDENT_ID = S.ID
+		WHERE S.INSTRUCTOR_ID = #{instructorId}
+			AND L.STATUS IN ('SCHEDULED', 'ATTENDED', 'LATE')
+			AND L.LESSON_AT >= #{monthStart, jdbcType=TIMESTAMP}
+			AND L.LESSON_AT &lt; #{nextMonthStart, jdbcType=TIMESTAMP}
+		ORDER BY TRUNC(L.LESSON_AT) ASC
+	</select>
+	
 </mapper>

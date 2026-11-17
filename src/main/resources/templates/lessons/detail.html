@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>授業の準備 | ClassBridge</title>
+
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <link rel="stylesheet" th:href="@{/css/lessons/detail.css}">
+</head>
+
+<body>
+    <!-- 홈으로 이동하는 고정 헤더 -->
+    <header class="home-brand">
+        <div class="home-brand-inner">
+            <a th:href="@{/}" aria-label="ClassBridge ホームへ">
+                ClassBridge
+            </a>
+        </div>
+    </header>
+
+    <main class="page lesson-detail-page">
+        <h1>授業の準備</h1>
+
+        <!-- 선택한 수업의 기본 정보 -->
+        <section class="lesson-detail-section">
+            <h2>今回の授業</h2>
+
+            <p>
+                学生名：
+                <a th:href="@{/students/{id}(id=${student.id})}" th:text="${student.name}">
+                </a>
+            </p>
+
+            <p th:text="|授業日時：${#temporals.format(
+                lesson.lessonAt, 'yyyy/MM/dd HH:mm'
+            )}|">
+            </p>
+
+            <p>
+                状態：
+                <span th:switch="${lesson.status}">
+                    <span th:case="'SCHEDULED'" class="lesson-status lesson-status-scheduled">予定</span>
+
+                    <span th:case="'ATTENDED'" class="lesson-status lesson-status-attended">出席</span>
+
+                    <span th:case="'LATE'" class="lesson-status lesson-status-late">遅刻</span>
+
+                    <span th:case="'CANCELLED'" class="lesson-status lesson-status-cancelled">キャンセル</span>
+
+                    <span th:case="'ABSENT'" class="lesson-status lesson-status-absent">欠席</span>
+
+                    <span th:case="*">不明</span>
+                </span>
+            </p>
+
+            <div th:if="${lesson.statusMemo != null}">
+                <h3>状態メモ</h3>
+                <p th:text="${lesson.statusMemo}" style="white-space: pre-wrap;">
+                </p>
+            </div>
+
+            <nav class="lesson-detail-actions" aria-label="今回の授業の操作">
+                <a th:href="@{/lessons/{id}/status(id=${lesson.id})}">
+                    状態を変更する
+                </a>
+
+                <a th:href="@{/lessons/{id}/edit(id=${lesson.id})}">
+                    日時を変更する
+                </a>
+
+                <!-- 기존 일보가 있으면 상세로, 없으면 작성 화면으로 이동 -->
+                <a th:if="${lesson.status == 'ATTENDED' or lesson.status == 'LATE'}"
+                    th:href="@{/lessons/{lessonId}/report/new(lessonId=${lesson.id})}">
+                    今回の授業記録を作成・表示する
+                </a>
+            </nav>
+        </section>
+
+        <!-- 직전 출석 수업의 일보 -->
+        <section class="lesson-detail-section">
+            <h2>前回の授業記録</h2>
+
+            <!-- 이전 출석 수업 자체가 없는 경우 -->
+            <p th:if="${previousLesson == null}">
+                以前に出席した授業はありません。
+            </p>
+
+            <div th:if="${previousLesson != null}">
+                <p class="lesson-detail-reference" th:text="|授業日時：${#temporals.format(
+                previousLesson.lessonAt, 'yyyy/MM/dd HH:mm'
+            )}|">
+                </p>
+
+                <!-- 수업은 했지만 일보가 없는 경우 -->
+                <div th:if="${previousReport == null}">
+                    <p class="lesson-detail-notice">
+                        この授業の記録はまだ作成されていません。
+                    </p>
+
+                    <p class="lesson-detail-actions">
+                        <a th:href="@{/lessons/{lessonId}/report/new(
+                    lessonId=${previousLesson.id}
+                )}">
+                            前回の授業記録を作成する
+                        </a>
+                    </p>
+                </div>
+
+                <!-- 직전 출석 수업의 일보가 있는 경우 -->
+                <div th:if="${previousReport != null}">
+                    <h3>今回確認すること</h3>
+
+                    <p th:if="${previousReport.nextCheck != null}" th:text="${previousReport.nextCheck}"
+                        style="white-space: pre-wrap;">
+                    </p>
+
+                    <p th:if="${previousReport.nextCheck == null}">
+                        確認事項は登録されていません。
+                    </p>
+
+                    <h3>前回の授業内容</h3>
+
+                    <p th:text="${previousReport.content}" style="white-space: pre-wrap;">
+                    </p>
+
+                    <p>
+                        <a th:href="@{/lessons/{lessonId}/report(
+                    lessonId=${previousLesson.id}
+                )}">
+                            前回の授業記録を見る
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 누적 관찰 기록은 직전 일보 유무와 관계없이 표시 -->
+        <section class="lesson-observation-history">
+            <h2>これまでの学習観察</h2>
+
+            <!-- 전체 관찰 기록이 없을 때만 안내 -->
+            <p th:if="${#maps.isEmpty(observationGroups)}">
+                観察記録はまだ登録されていません。
+            </p>
+
+            <div class="observation-card-grid" th:if="${!#maps.isEmpty(observationGroups)}">
+
+                <!-- 기록이 있는 분류마다 카드 한 개 생성 -->
+                <section class="observation-history-card" th:each="group : ${observationGroups}">
+
+                    <h3 th:switch="${group.key}">
+                        <span th:case="'GRAMMAR'">文法</span>
+                        <span th:case="'EXPRESSION'">表現</span>
+                        <span th:case="'PRONUNCIATION'">発音</span>
+                        <span th:case="'SPEAKING'">会話</span>
+                        <span th:case="'LISTENING'">聞き取り</span>
+                        <span th:case="'OTHER'">その他</span>
+                        <span th:case="*">不明</span>
+
+                        <!-- 해당 분류의 관찰 기록 개수 -->
+                        <!-- 해당 분류의 관찰 기록 개수 -->
+                        <span class="observation-count" th:text="|（${#lists.size(group.value)}件）|">
+                        </span>
+                    </h3>
+
+                    <!-- 해당 분류의 기록을 최근 수업부터 표시 -->
+                    <!-- 최근 관찰 기록은 최대 3개까지 바로 표시 -->
+                    <article class="observation-history-entry" th:each="observation, loop : ${group.value}"
+                        th:if="${loop.index < 3}">
+
+                        <p class="observation-history-date" th:text="${#temporals.format(
+                            observation.lessonAt, 'yyyy/MM/dd HH:mm')}">
+                        </p>
+
+                        <!-- 항목을 누르면 관찰 내용과 일보 링크 표시 -->
+                        <details class="observation-content">
+                            <summary th:text="${observation.item}"></summary>
+
+                            <div class="observation-content-body">
+                                <p th:text="${observation.memo}" style="white-space: pre-wrap;">
+                                </p>
+
+                                <a th:href="@{/lessons/{lessonId}/report(
+                                    lessonId=${observation.lessonId})}">
+                                    この授業の記録を見る
+                                </a>
+                            </div>
+                        </details>
+                    </article>
+
+                    <!-- 4개 이상이면 나머지 기록을 접어서 표시 -->
+                    <details class="observation-more" th:if="${#lists.size(group.value) > 3}">
+
+                        <summary th:text="|残りの記録を見る（${#lists.size(group.value) - 3}件）|">
+                        </summary>
+
+                        <article class="observation-history-entry" th:each="observation, loop : ${group.value}"
+                            th:if="${loop.index >= 3}">
+
+                            <p class="observation-history-date" th:text="${#temporals.format(
+                                observation.lessonAt, 'yyyy/MM/dd HH:mm')}">
+                            </p>
+
+                            <!-- 항목을 누르면 관찰 내용과 일보 링크 표시 -->
+                            <details class="observation-content">
+                                <summary th:text="${observation.item}"></summary>
+
+                                <div class="observation-content-body">
+                                    <p th:text="${observation.memo}" style="white-space: pre-wrap;">
+                                    </p>
+
+                                    <a th:href="@{/lessons/{lessonId}/report(
+                                        lessonId=${observation.lessonId})}">
+                                        この授業の記録を見る
+                                    </a>
+                                </div>
+                            </details>
+                        </article>
+                    </details>
+                </section>
+            </div>
+        </section>
+
+        <p class="lesson-detail-back">
+            <a th:href="@{/students/{studentId}/lessons(studentId=${student.id})}">
+                この学生の授業一覧へ
+            </a>
+        </p>
+
+        <p class="lesson-detail-back">
+            <a th:href="@{/}">ホームへ戻る</a>
+        </p>
+    </main>
+</body>
+
+</html>

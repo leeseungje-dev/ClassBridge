@@ -25,8 +25,7 @@
         <div class="lesson-header">
             <h1>授業一覧</h1>
 
-            <a class="lesson-create-link"
-                th:href="@{/students/{studentId}/lessons/new(studentId=${student.id})}">
+            <a class="lesson-create-link" th:href="@{/students/{studentId}/lessons/new(studentId=${student.id})}">
                 授業を登録する
             </a>
         </div>
@@ -55,26 +54,30 @@
                         lesson.lessonAt, 'yyyy/MM/dd HH:mm'
                     )}"></td>
 
+                        <!-- 출결 상태와 상태별 색상 -->
                         <td th:switch="${lesson.status}">
-                            <span th:case="SCHEDULED">予定</span>
-                            <span th:case="ATTENDED">出席</span>
-                            <span th:case="CANCELLED">キャンセル</span>
-                            <span th:case="ABSENT">欠席</span>
+                            <span th:case="'SCHEDULED'" class="lesson-status lesson-status-scheduled">予定</span>
+
+                            <span th:case="'ATTENDED'" class="lesson-status lesson-status-attended">出席</span>
+
+                            <span th:case="'LATE'" class="lesson-status lesson-status-late">遅刻</span>
+
+                            <span th:case="'CANCELLED'" class="lesson-status lesson-status-cancelled">キャンセル</span>
+
+                            <span th:case="'ABSENT'" class="lesson-status lesson-status-absent">欠席</span>
+
                             <span th:case="*">不明</span>
                         </td>
 
-                        <td class="lesson-status-memo"
-                            th:text="${lesson.statusMemo}">
+                        <td class="lesson-status-memo" th:text="${lesson.statusMemo}">
                         </td>
 
                         <td class="lesson-row-actions">
-                            <a class="lesson-action-link"
-                                th:href="@{/lessons/{id}/edit(id=${lesson.id})}">
+                            <a class="lesson-action-link" th:href="@{/lessons/{id}/edit(id=${lesson.id})}">
                                 日時を変更する
                             </a>
 
-                            <a class="lesson-action-link"
-                                th:href="@{/lessons/{id}/status(id=${lesson.id})}">
+                            <a class="lesson-action-link" th:href="@{/lessons/{id}/status(id=${lesson.id})}">
                                 状態を変更する
                             </a>
 
@@ -84,18 +87,18 @@
                                 授業記録を見る
                             </a>
 
-                            <!-- 일보가 없고 출석 상태이면 작성 화면으로 이동 -->
-                            <a class="lesson-action-link"
-                                th:if="${lesson.lessonReportId == null
-                                and lesson.status == 'ATTENDED'}"
+                            <!-- 일보가 없고 출석 또는 지각이면 작성 화면으로 이동 -->
+                            <a class="lesson-action-link" th:if="${lesson.lessonReportId == null
+                                    and (lesson.status == 'ATTENDED' or lesson.status == 'LATE')}"
                                 th:href="@{/lessons/{lessonId}/report/new(lessonId=${lesson.id})}">
                                 授業記録を作成する
                             </a>
 
-                            <!-- 일보가 없고 출석 이외의 상태이면 작성 조건 안내 -->
+                            <!-- 일보가 없고 출석·지각 이외의 상태이면 안내 -->
                             <span th:if="${lesson.lessonReportId == null
-                            and lesson.status != 'ATTENDED'}">
-                                授業記録は出席した授業のみ作成できます。
+                                    and lesson.status != 'ATTENDED'
+                                    and lesson.status != 'LATE'}">
+                                授業記録は出席・遅刻の授業のみ作成できます。
                             </span>
                         </td>
                     </tr>

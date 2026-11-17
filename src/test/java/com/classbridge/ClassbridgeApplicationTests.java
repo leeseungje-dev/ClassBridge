@@ -15,6 +15,7 @@ import com.classbridge.report.ObservationUpdateInput;
 import com.classbridge.report.LessonReportNotFoundException;
 import com.classbridge.observation.LearningObservation;
 import com.classbridge.observation.LearningObservationMapper;
+import com.classbridge.lesson.HomeLesson;
 
 // MyBatis
 import com.classbridge.user.UserMapper;
@@ -31,12 +32,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.YearMonth;
 
 // 원래 있던거.
 import org.junit.jupiter.api.Test;
@@ -48,7 +52,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /*
  * author : LEE SEUNGJE
- * date : 2026.10.10 ~ 2026.11.01
+ * date : 2026.10.10 ~ 2026.11.15
  */
 
 // Test 에 필요한 Spring 환경(DB 연결, Repository 등)을 준비하라는 표시
@@ -2511,7 +2515,7 @@ class ClassbridgeApplicationTests {
 			} catch (IllegalArgumentException e) {
 				rejected = true;
 				
-				assertEquals("出席した授業のみ記録を作成できます。", e.getMessage());
+				assertEquals("出席・遅刻の授業のみ記録を作成できます。", e.getMessage());
 			}
 			
 			// 검사 1 : 해당 상태에서 등록이 거절됐는지
@@ -3248,7 +3252,7 @@ class ClassbridgeApplicationTests {
 			} catch (IllegalArgumentException e) {
 				rejected = true;
 				
-				assertEquals("授業記録があるため、出席以外の状態には変更できません。", e.getMessage());
+				assertEquals("授業記録があるため、出席・遅刻以外の状態には変更できません。", e.getMessage());
 			}
 
 			// 검사 1 : 상태 변경이 거절됐는지 검사
@@ -3743,6 +3747,457 @@ class ClassbridgeApplicationTests {
 	    assertEquals("GRAMMAR", unchanged.getCategory());
 	    assertEquals("過去形", unchanged.getItem());
 	    assertEquals("過去形を使えた。", unchanged.getMemo());
+	}
+	
+	// home 일정의 날짜 선택, 전체 상태 표시 및 강사별 조회 제한
+	@Test
+	@Transactional
+	void findHomeLessonsOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 각 강사의 학생 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Student otherStudent = new Student(
+				otherInstructor.getId(),
+				"鈴木花子",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(otherStudent);
+		
+		// test 에서 사용할 고정 기준 날짜
+		LocalDate today = LocalDate.of(2026, 11, 16);
+		
+		// 아직 수업이 없으면 표시할 날짜도 없음
+		assertNull(lessonMapper.findHomeLessonDate(
+				instructor.getId(), today.atStartOfDay()
+			));
+		
+		// 기준일에는 취소된 수업만 준비
+		Lesson todayCancelled = new Lesson(
+				student.getId(), today.atTime(10, 0)
+			);
+		lessonMapper.insertLesson(todayCancelled);
+		
+		lessonMapper.updateLessonStatus(
+				todayCancelled.getId(),
+				instructor.getId(),
+				"CANCELLED",
+				null
+			);
+		
+		// 모레의 예정 수업
+		Lesson scheduled = new Lesson(
+				student.getId(),
+				today.plusDays(2).atTime(15,0)
+			);
+		lessonMapper.insertLesson(scheduled);
+		
+		// 모레의 취소 수업 : 예정 수업보다 이른 시간
+		Lesson cancelled = new Lesson(
+				student.getId(),
+				today.plusDays(2).atTime(10,0)
+			);
+		lessonMapper.insertLesson(cancelled);
+		
+		lessonMapper.updateLessonStatus(
+				cancelled.getId(),
+				instructor.getId(),
+				"CANCELLED",
+				null
+			);
+		
+		// 다른 강사의 오늘 예정 수업 : 날짜 선택에 영향을 주면 안 됨
+		Lesson otherToday = new Lesson(
+				otherStudent.getId(),
+				today.atTime(9, 0)
+			);
+		lessonMapper.insertLesson(otherToday);
+		
+		// 다른 강사의 모레 수업 : 목록에 섞이면 안 됨
+		Lesson otherSameDay = new Lesson(
+				otherStudent.getId(),
+				today.plusDays(2).atTime(11, 0)
+			);
+		lessonMapper.insertLesson(otherSameDay);
+		
+		// 선택 날짜 다음 날 00:00 수업 : 선택 날짜 목록에서 제외
+		Lesson nextDay = new Lesson(
+				student.getId(),
+				today.plusDays(3).atStartOfDay()
+			);
+		lessonMapper.insertLesson(nextDay);
+		
+		// 검사 1 : 오늘 취소 수업만 있으므로 모레 선택
+		LocalDate selectedDate = lessonMapper.findHomeLessonDate(
+				instructor.getId(), 
+				today.atStartOfDay()
+			);
+		
+		assertEquals(today.plusDays(2), selectedDate);
+		
+		// 검사 2 : 모레의 내 수업만 시간순으로 조회
+		List<HomeLesson> found = lessonMapper.findHomeLessonsByDate(
+				instructor.getId(),
+	            selectedDate.atStartOfDay(),
+	            selectedDate.plusDays(1).atStartOfDay()
+			);
+
+		assertEquals(2, found.size());
+
+		assertEquals(cancelled.getId(), found.get(0).getId());
+		assertEquals("CANCELLED", found.get(0).getStatus());
+
+		assertEquals(scheduled.getId(), found.get(1).getId());
+		assertEquals("SCHEDULED", found.get(1).getStatus());
+		assertEquals(student.getId(), found.get(1).getStudentId());
+		assertEquals("山田太郎", found.get(1).getStudentName());
+		assertEquals(scheduled.getLessonAt(), found.get(1).getLessonAt());
+		assertNull(found.get(1).getLessonReportId());
+		
+		// 검사 3 : 오늘 수업을 예정으로 바꾸면 오늘 선택
+		lessonMapper.updateLessonStatus(
+				todayCancelled.getId(), 
+				instructor.getId(),
+				"SCHEDULED",
+				null
+			);
+		
+		assertEquals(today, lessonMapper.findHomeLessonDate(instructor.getId(), today.atStartOfDay()));
+	}
+	
+	// 미래의 수업의 출석, 결석 처리를 거절하고 기존 상태와 메모 유지
+	@Test
+	@Transactional
+	void rejectAttendanceBeforeLessonStarts() {
+		
+		// 강사와 학생 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+				);
+		userMapper.insertUser(instructor);
+		
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+				);
+		studentMapper.insertStudent(student);
+		
+		// 실행 날짜가 바뀌어도 미래가 되도록 내일 수업 준비
+		LocalDate tomorrow = LocalDate.now(ZoneId.of("Asia/Tokyo")).plusDays(1);
+		
+		Lesson lesson = new Lesson(student.getId(), tomorrow.atTime(15,0));
+		lessonMapper.insertLesson(lesson);
+		
+		// 변경 전 상태와 메모 설정
+		lessonService.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"SCHEDULED",
+				"変更前のメモ"
+			);
+		
+		String[] statuses = {
+				"ATTENDED",
+				"ABSENT"
+		};
+		
+		for (String status : statuses) {
+			// 검사 1 : 미래 수업의 출석, 결석 변경 시 예외 발생
+			IllegalArgumentException exception = assertThrows(
+					IllegalArgumentException.class,
+					() -> lessonService.updateLessonStatus(
+							lesson.getId(),
+							instructor.getId(),
+							status,
+							"変更後のメモ"
+						)
+				);
+			assertEquals("授業開始前は、出席・遅刻・欠席に変更できません。", exception.getMessage());
+			
+			// 검사 2 : 거절된 요청의 상태와 메모가 DB 에 반영 안 됐는지 확인
+			Lesson unchanged = lessonMapper.findLessonById(
+					lesson.getId(),
+					instructor.getId()
+				);
+			
+			assertNotNull(unchanged);
+			assertEquals("SCHEDULED", unchanged.getStatus());
+			assertEquals("変更前のメモ", unchanged.getStatusMemo());
+		}
+		
+		// 검사 3 : 수업 시작 전에도 취소는 가능
+		lessonService.updateLessonStatus(
+				lesson.getId(),
+				instructor.getId(),
+				"CANCELLED",
+				"都合によりキャンセル"
+			);
+		
+		Lesson cancelled = lessonMapper.findLessonById(lesson.getId(), instructor.getId());
+		
+		assertNotNull(cancelled);
+		assertEquals("CANCELLED", cancelled.getStatus());
+		assertEquals("都合によりキャンセル", cancelled.getStatusMemo());
+	}
+	
+	// 담당 강사의 출석 수업 중 미작성 일보만 조회하고 작성 후 제외
+	@Test
+	@Transactional
+	void findLessonWithoutReportOnlyForOwner() {
+		
+		// 강사 두 명 준비
+		User instructor = new User(
+				"teacher-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(instructor);
+		
+		User otherInstructor = new User(
+				"other-" + UUID.randomUUID() + "@example.com",
+				"test-only-hash-placeholder"
+			);
+		userMapper.insertUser(otherInstructor);
+		
+		// 각 강사의 학생 준비
+		Student student = new Student(
+				instructor.getId(),
+				"山田太郎",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(student);
+		
+		Student otherStudent = new Student(
+				otherInstructor.getId(),
+				"鈴木花子",
+				null,
+				null,
+				null
+			);
+		studentMapper.insertStudent(otherStudent);
+		
+		// 출석 처리할 수 있도록 어제 날짜 사용
+		LocalDate yesterday = LocalDate.now(ZoneId.of("Asia/Tokyo")).minusDays(1);
+		
+		// 내 학생의 출석 수업 : 아직 일보 없음
+		Lesson attended = new Lesson(
+				student.getId(),
+				yesterday.atTime(10, 0)
+			);
+		lessonMapper.insertLesson(attended);
+		
+		lessonService.updateLessonStatus(
+				attended.getId(),
+				instructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 다른 강사의 출석 수업 : 내 목록에 나오면 안 됨
+		Lesson otherAttended = new Lesson(
+				otherStudent.getId(),
+				yesterday.atTime(11, 0)
+			);
+		lessonMapper.insertLesson(otherAttended);
+		
+		lessonService.updateLessonStatus(
+				otherAttended.getId(),
+				otherInstructor.getId(),
+				"ATTENDED",
+				null
+			);
+		
+		// 예정, 취소, 결석 수업은 일보가 없어도 알림 대상이 아님
+		String[] statuses = {
+			"SCHEDULED",
+			"CANCELLED",
+			"ABSENT"
+		};
+		
+		for (String status : statuses) {
+			Lesson lesson = new Lesson(
+					student.getId(), yesterday.atTime(13, 0)
+				);
+			lessonMapper.insertLesson(lesson);
+
+			lessonService.updateLessonStatus(
+					lesson.getId(), instructor.getId(), status, null
+				);
+		}
+		
+		// 검사 1 : 내 출석 수업 중 일보가 없는 한 건만 조회
+		List<HomeLesson> found = lessonService.findLessonsWithoutReport(instructor.getId());
+
+		assertEquals(1, found.size());
+
+		HomeLesson missing = found.get(0);
+
+		assertEquals(attended.getId(), missing.getId());
+		assertEquals(student.getId(), missing.getStudentId());
+		assertEquals("山田太郎", missing.getStudentName());
+		assertEquals(attended.getLessonAt(), missing.getLessonAt());
+		assertEquals("ATTENDED", missing.getStatus());
+		assertNull(missing.getLessonReportId());
+		
+		// 해당 수업의 일보 작성
+		lessonReportService.registerLessonReport(
+				attended.getId(),
+				instructor.getId(),
+				"会話を練習しました。",
+				null,
+				List.of()
+			);
+		
+		// 검사 2 : 일보를 작성하면 미작성 목록에서 제외
+		List<HomeLesson> afterSave = lessonService.findLessonsWithoutReport(instructor.getId());
+
+		assertTrue(afterSave.isEmpty());
+	}
+	
+	// 달력의 월 범위, 날짜 중복 제거, 출결 조건, 강사별 조회 제한
+	@Test
+	@Transactional
+	void findCalendarLessonDatesOnlyForOwner() {
+	    // 강사 두 명 준비
+	    User instructor = new User(
+	            "teacher-" + UUID.randomUUID() + "@example.com",
+	            "test-only-hash-placeholder"
+	    );
+	    userMapper.insertUser(instructor);
+
+	    User otherInstructor = new User(
+	            "other-" + UUID.randomUUID() + "@example.com",
+	            "test-only-hash-placeholder"
+	    );
+	    userMapper.insertUser(otherInstructor);
+
+	    // 각 강사의 학생 준비
+	    Student student = new Student(
+	            instructor.getId(), "山田太郎", null, null, null
+	    );
+	    studentMapper.insertStudent(student);
+
+	    Student otherStudent = new Student(
+	            otherInstructor.getId(), "鈴木花子", null, null, null
+	    );
+	    studentMapper.insertStudent(otherStudent);
+
+	    // 연도가 바뀌는 월 경계도 함께 확인
+	    YearMonth month = YearMonth.of(2026, 12);
+
+	    // 수업이 없으면 빈 목록
+	    assertTrue(lessonService.findLessonDatesForMonth(
+	            instructor.getId(), month
+	    ).isEmpty());
+
+	    // 첫날 00:00의 예정 수업은 포함
+	    Lesson firstDay = new Lesson(
+	            student.getId(), month.atDay(1).atStartOfDay()
+	    );
+	    lessonMapper.insertLesson(firstDay);
+
+	    // 같은 날짜에 수업이 여러 개여도 날짜는 한 번만 반환
+	    Lesson sameDay = new Lesson(
+	            student.getId(), month.atDay(1).atTime(14, 0)
+	    );
+	    lessonMapper.insertLesson(sameDay);
+
+	    // 출석 수업도 포함
+	    Lesson attended = new Lesson(
+	            student.getId(), month.atDay(10).atTime(10, 0)
+	    );
+	    lessonMapper.insertLesson(attended);
+	    lessonMapper.updateLessonStatus(
+	            attended.getId(), instructor.getId(), "ATTENDED", null
+	    );
+
+	    // 마지막 날의 지각 수업도 포함
+	    Lesson late = new Lesson(
+	            student.getId(), month.atEndOfMonth().atTime(23, 59)
+	    );
+	    lessonMapper.insertLesson(late);
+	    lessonMapper.updateLessonStatus(
+	            late.getId(), instructor.getId(), "LATE", null
+	    );
+
+	    // 결석만 있는 날짜는 제외
+	    Lesson absent = new Lesson(
+	            student.getId(), month.atDay(15).atTime(10, 0)
+	    );
+	    lessonMapper.insertLesson(absent);
+	    lessonMapper.updateLessonStatus(
+	            absent.getId(), instructor.getId(), "ABSENT", null
+	    );
+
+	    // 취소만 있는 날짜는 제외
+	    Lesson cancelled = new Lesson(
+	            student.getId(), month.atDay(20).atTime(10, 0)
+	    );
+	    lessonMapper.insertLesson(cancelled);
+	    lessonMapper.updateLessonStatus(
+	            cancelled.getId(), instructor.getId(), "CANCELLED", null
+	    );
+
+	    // 다른 강사의 수업 날짜는 제외
+	    Lesson otherLesson = new Lesson(
+	            otherStudent.getId(), month.atDay(25).atTime(10, 0)
+	    );
+	    lessonMapper.insertLesson(otherLesson);
+
+	    // 지난달 마지막 날은 제외
+	    Lesson previousMonth = new Lesson(
+	            student.getId(),
+	            month.atDay(1).minusDays(1).atTime(23, 59)
+	    );
+	    lessonMapper.insertLesson(previousMonth);
+
+	    // 다음 해 1월 1일 00:00은 제외
+	    Lesson nextMonth = new Lesson(
+	            student.getId(),
+	            month.plusMonths(1).atDay(1).atStartOfDay()
+	    );
+	    lessonMapper.insertLesson(nextMonth);
+
+	    // 내 수업 중 예정·출석·지각 날짜만 중복 없이 날짜순으로 조회
+	    List<LocalDate> found = lessonService.findLessonDatesForMonth(
+	            instructor.getId(), month
+	    );
+
+	    assertEquals(
+	            List.of(
+	                    month.atDay(1),
+	                    month.atDay(10),
+	                    month.atEndOfMonth()
+	            ),
+	            found
+	    );
 	}
 	
 }

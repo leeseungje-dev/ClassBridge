@@ -2,6 +2,8 @@ package com.classbridge.report;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,11 +12,12 @@ import com.classbridge.lesson.Lesson;
 import com.classbridge.lesson.LessonService;
 import com.classbridge.observation.LearningObservation;
 import com.classbridge.observation.LearningObservationMapper;
+import com.classbridge.observation.ObservationHistory;
 
 /*
  * 수업일보와 학습 관찰 기록의 통합 처리 Service (보존 작업을 하나로 묶기 위해)
  * author : LEE SEUNGJE
- * date : 2026.10.30 ~ 2026.10.30
+ * date : 2026.10.30 ~ 2026.11.16
  */
 
 @Service
@@ -148,9 +151,11 @@ public class LessonReportService {
 		// 수업 조회 및 담당 강사 확인
 		Lesson lesson = lessonService.findLessonById(lessonId, instructorId);
 		
-		// 수업이 출석상태가 아니면 일보 작성 불가능
-		if (!"ATTENDED".equals(lesson.getStatus())) {
-			throw new IllegalArgumentException("出席した授業のみ記録を作成できます。");
+		// 수업이 출석 또는 지각한 수업만 일보 작성 가능
+		if (!"ATTENDED".equals(lesson.getStatus())
+				&& !"LATE".equals(lesson.getStatus())
+		) {
+			throw new IllegalArgumentException("出席・遅刻の授業のみ記録を作成できます。");
 		}
 		
 		// 이미 일보가 있으면 중복 등록 거절
@@ -362,6 +367,7 @@ public class LessonReportService {
 	                		|| !existing.getMemo().equals(input.getMemo());
 
 	                if (changed) {
+	                	existing.setCategory(input.getCategory());
 	                	existing.setItem(input.getItem());
 	                	existing.setMemo(input.getMemo());
 
@@ -399,6 +405,95 @@ public class LessonReportService {
 				}
 			}
 		}
+	}
+	
+	// 수업 준비 상세 화면에서 사용할 선택한 수업의 준비에 참고할 이전 일보 조회 기능
+	public LessonReport findPreviousLessonReport(
+			Long lessonId,
+			Long instructorId
+	) {
+		// 선택한 수업이 존재하고, 로그인한 강사의 수업인지 확인
+		lessonService.findLessonById(lessonId, instructorId);
+		
+		// 같은 학생의 이전 수업 중 가장 최근 일보 조회
+		return lessonReportMapper.findPreviousLessonReport(lessonId, instructorId);
+	}
+	
+	// 선택한 수업의 준비에 참고할 이전 일보의 관찰 기록 조회
+	public List<LearningObservation> findPreviousObservations(
+			Long lessonId,
+			Long instructorId
+	) {
+		// 선택한 수업의 접근 권한 확인 및 이전 일보 조회
+		LessonReport previousReport = findPreviousLessonReport(
+				lessonId,
+				instructorId
+			);
+		
+		// 이전 일보가 없으면 관찰 기록도 빈 목록 반환
+		if (previousReport == null) {
+			return List.of();
+		}
+		
+		// 이전 일보에 연결된 관찰 기록 조회
+		return learningObservationMapper.findObservationsByLessonReportId(
+				previousReport.getId(),
+				instructorId
+			);
+	}
+	
+	// 수업 준비 화면의 누적 관찰 기록 전체 조회
+	public List<ObservationHistory> findObservationHistoryForLesson(
+			Long lessonId,
+			Long instructorId
+	) {
+		// 선택한 수업이 존재하고, 담당 강사의 수업인지 확인
+		lessonService.findLessonById(lessonId, instructorId);
+		
+		return learningObservationMapper.findObservationHistoryForLesson(
+				lessonId,
+				instructorId
+			);
+	}
+	
+	// 누적 관찰 기록을 분류별 카드에 표시할 수 있도록 묶기
+	public Map<String, List<ObservationHistory>> findObservationHistoryByCategory(
+			Long lessonId,
+			Long instructorId
+	) {
+		// 최근 수업부터 정렬된 전체 누적 기록 조회
+		List<ObservationHistory> histories = findObservationHistoryForLesson(lessonId, instructorId);
+		
+		// 카드의 표시 순서
+		String[] categories = {
+			"GRAMMAR",
+			"EXPRESSION",
+			"PRONUNCIATION",
+			"SPEAKING",
+			"LISTENING",
+			"OTHER"
+		};
+		
+		// 분류를 넣은 순서를 유지
+		Map<String, List<ObservationHistory>> grouped = new LinkedHashMap<>();
+		
+		for (String category : categories) {
+			List<ObservationHistory> records = new ArrayList<>();
+			
+			// 해당 분류의 기록만 모으기
+			for (ObservationHistory history : histories) {
+				if (category.equals(history.getCategory())) {
+					records.add(history);
+				}
+			}
+			
+			// 기록이 있는 분류만 추가
+			if (!records.isEmpty()) {
+				grouped.put(category, records);
+			}
+		}
+		
+		return grouped;
 	}
 	
 }

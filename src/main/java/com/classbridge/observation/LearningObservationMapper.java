@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Param;
 /*
  * 학습 관찰 기록 DB 등록 및 조회
  * author : LEE SEUNGJE
- * date : 2026.10.29 ~ 2026.10.30
+ * date : 2026.10.29 ~ 2026.11.16
  */
 
 @Mapper
@@ -36,4 +36,11 @@ public abstract interface LearningObservationMapper {
 			@Param("lessonReportId") Long lessonReportId,
 			@Param("instructorId") Long instructorId
 		);
+	
+	// 수업 준비용 누적 관찰 기록 조회 및 담당 강사 확인
+	public abstract List<ObservationHistory> findObservationHistoryForLesson(
+			@Param("lessonId") Long lessonId,
+			@Param("instructorId") Long instructorId
+		);
+	
 }

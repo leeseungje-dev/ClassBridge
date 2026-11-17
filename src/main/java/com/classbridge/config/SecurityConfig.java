@@ -25,7 +25,13 @@ public class SecurityConfig {
 		// 경로 요청별 접근 규칙 설정
 		http.authorizeHttpRequests((auth) -> {
 			// 홈, 회원가입, 오류 경로와 CSS는 로그인 없이 접근 가능
-			auth.requestMatchers("/", "/signup", "/error", "/css/**").permitAll();
+			auth.requestMatchers(
+					"/",
+					"/signup",
+					"/error",
+					"/css/**",
+					"/js/**"
+			).permitAll();
 			
 			auth.anyRequest().authenticated();
 		});
